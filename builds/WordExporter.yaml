@@ -1,0 +1,62 @@
+# .NET Desktop
+# Build and run tests for .NET Desktop or Windows classic desktop solutions.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/windows/dot-net
+
+pool:
+  vmImage: 'VS2017-Win2016'
+
+trigger:
+- master
+- develop
+- release/*
+- hotfix/*
+- feature/*
+
+variables:
+  solution: 'src/WordExporter.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+steps:
+
+- task: GitVersion@1
+  displayName: GitVersion 
+  inputs:
+    BuildNamePrefix: 'MigrationCI'
+
+- task: SonarSource.sonarcloud.14d9cde6-c1da-4d55-aa01-2965cd301255.SonarCloudPrepare@1
+  displayName: 'Prepare analysis on SonarCloud'
+  inputs:
+    SonarCloud: 'SonarCloud'
+    organization: 'alkampfergit-github'
+    projectKey: WordExporterPlayground
+    projectName: WordExporterPlayground
+    projectVersion: '$(AssemblyVersion)'
+
+- task: NuGetToolInstaller@0
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+- task: VSTest@2
+  inputs:
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+- task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
+  displayName: 'Run Code Analysis'
+
+- task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@1
+  displayName: 'Publish Quality Gate Result'
+
+
+
+
