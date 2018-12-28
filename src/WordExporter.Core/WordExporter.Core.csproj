@@ -266,6 +266,8 @@
   <ItemGroup>
     <Compile Include="Connection.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WordManipulation\Support\StyleProperties.cs" />
+    <Compile Include="WordManipulation\WordManipulationExtensions.cs" />
     <Compile Include="WordManipulation\WordManipulator.cs" />
     <Compile Include="WorkItems\WorkItemManger.cs" />
   </ItemGroup>

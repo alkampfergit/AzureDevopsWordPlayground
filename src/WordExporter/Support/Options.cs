@@ -20,9 +20,15 @@ namespace WordExporter.Support
 
         [Option(
             "tokenfile",
-            Required = true,
+            Required = false,
             HelpText = "File that contains access token to perform the migration, useful if you have token stored in a file in a protected directory accessible only by the account that is runnign the service")]
         public String AccessTokenFile { get; set; }
+
+        [Option(
+         "token",
+         Required = false,
+         HelpText = "Access token")]
+        public String AccessToken { get; set; }
 
         [Option(
             "teamproject",
@@ -40,6 +46,10 @@ namespace WordExporter.Support
                     throw new ConfigurationErrorsException("Unable to find AccessTokenFile");
                 }
                 return File.ReadAllText(AccessTokenFile);
+            }
+            else if (!String.IsNullOrEmpty(AccessToken))
+            {
+                return AccessToken;
             }
 
             Log.Logger.Error("Access token should be specified, you can use any of the supported method (Access Token File)", AccessTokenFile);

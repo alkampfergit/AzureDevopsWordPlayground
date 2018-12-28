@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using WordExporter.Core;
+using WordExporter.Core.WordManipulation;
 using WordExporter.Core.WorkItems;
 using WordExporter.Support;
 
@@ -33,13 +34,24 @@ namespace WordExporter
             Connection connection = new Connection(options.ServiceAddress, options.GetAccessToken());
 
             DumpAllTeamProjects(connection);
-            WorkItemManger workItemManger = new WorkItemManger(connection);
 
-            var workItems = workItemManger.LoadAllWorkItemForAreaAndIteration("zoalord insurance", "zoalord insurance\\Release 1\\Sprint 6");
-            foreach (var workItem in workItems)
+
+            WorkItemManger workItemManger = new WorkItemManger(connection);
+            workItemManger.SetTeamProject("zoalord insurance");
+            var workItems = workItemManger.LoadAllWorkItemForAreaAndIteration(
+                "zoalord insurance",
+                "zoalord insurance\\Release 1\\Sprint 6");
+
+            var fileName = Path.GetTempFileName() + ".docx";
+            using (WordManipulator manipulator = new WordManipulator(fileName, true))
             {
-                Log.Debug("[{Id}/{Type}]: {Title}", workItem.Id, workItem.Type.Name, workItem.Title);
+                foreach (var workItem in workItems)
+                {
+                    manipulator.InsertWorkItem(workItem);
+                }
             }
+
+            System.Diagnostics.Process.Start(fileName);
 
             if (Environment.UserInteractive)
             {
