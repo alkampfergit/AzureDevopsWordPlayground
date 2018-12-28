@@ -15,6 +15,8 @@ namespace WordExporter
         {
             ConfigureSerilog();
 
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
             var result = CommandLine.Parser.Default.ParseArguments<Options>(args)
                .WithParsed<Options>(opts => options = opts)
                .WithNotParsed<Options>((errs) => HandleParseError(errs));
@@ -27,6 +29,21 @@ namespace WordExporter
             }
 
             Connection connection = new Connection(options.ServiceAddress, options.GetAccessToken());
+
+            foreach (var tpname in connection.GetTeamProjectsNames())
+            {
+                Log.Debug("Team Project {tpname}", tpname);
+            }
+            if (Environment.UserInteractive)
+            {
+                Console.WriteLine("Execution completed, press a key to continue");
+                Console.ReadKey();
+            }
+        }
+
+        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Log.Error(e.ExceptionObject as Exception, "Unhandled exception in the program: {message}", e.ExceptionObject.ToString());
         }
 
         private static Options options;
@@ -40,7 +57,7 @@ namespace WordExporter
         {
             Log.Logger = new LoggerConfiguration()
                 .Enrich.WithExceptionDetails()
-                .MinimumLevel.Information()
+                .MinimumLevel.Debug()
                 .WriteTo.Console()
                 .WriteTo.File(
                     "logs.txt",
