@@ -94,6 +94,9 @@ namespace WordExporter.Core.WordManipulation
         {
             Log.Debug("Adding to word work item [{Id}/{Type}]: {Title}", workItem.Id, workItem.Type.Name, workItem.Title);
             AppendTextWithStyle("workItemTitle", $"{workItem.Id}: {workItem.Title}");
+
+            AppendHtml($"<html><head></head><body>{workItem.Description}</body></html>");
+
             _body.Append(
                 new Paragraph(
                 new Run(
@@ -104,7 +107,7 @@ namespace WordExporter.Core.WordManipulation
 
         #region Adding Text helpers
 
-        private void AppendTextWithStyle(String styleId, String text)
+        private WordManipulator AppendTextWithStyle(String styleId, String text)
         {
             Paragraph p = new Paragraph();
             ParagraphProperties properties = new ParagraphProperties();
@@ -115,6 +118,29 @@ namespace WordExporter.Core.WordManipulation
             p.AppendChild(properties);
             p.AppendChild(new Run(new Text(text)));
             _body.Append(p);
+            return this;
+        }
+
+        public WordManipulator AppendHtml(String htmlPage)
+        {
+            string altChunkId = "myid" + Guid.NewGuid().ToString();
+            MainDocumentPart mainDocPart = _document.MainDocumentPart;
+
+            using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(htmlPage)))
+            {
+                // Create alternative format import part.
+                AlternativeFormatImportPart formatImportPart =    mainDocPart.AddAlternativeFormatImportPart(
+                    AlternativeFormatImportPartType.Html, 
+                    altChunkId);
+
+                // Feed HTML data into format import part (chunk).
+                formatImportPart.FeedData(ms);
+                AltChunk altChunk = new AltChunk();
+                altChunk.Id = altChunkId;
+
+                mainDocPart.Document.Body.Append(altChunk);
+            }
+            return this;
         }
 
         #endregion  
@@ -185,9 +211,9 @@ namespace WordExporter.Core.WordManipulation
 
         public void CreateAndAddParagraphStyle(
             StyleDefinitionsPart styleDefinitionsPart,
-            string styleid, 
+            string styleid,
             string stylename,
-            StyleProperties properties )
+            StyleProperties properties)
         {
             // Access the root element of the styles part.
             Styles styles = styleDefinitionsPart.Styles;

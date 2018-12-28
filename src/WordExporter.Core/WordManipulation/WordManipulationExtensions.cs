@@ -1,4 +1,5 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -22,6 +23,38 @@ namespace WordExporter.Core.WordManipulation
                 xdoc = XDocument.Load(xr);
             part.AddAnnotation(xdoc);
             return xdoc;
+        }
+
+        public static void AppendOtherWordFile(this Document document, String wordFilePath, Boolean addPageBreak = true)
+        {
+            if (addPageBreak)
+            {
+                document.AddPageBreak();
+            }
+            MainDocumentPart mainPart = document.MainDocumentPart;
+            string altChunkId = "AltChunkId" + Guid.NewGuid().ToString();
+            AlternativeFormatImportPart chunk = mainPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.WordprocessingML, altChunkId);
+
+            using (FileStream fileStream = File.Open(wordFilePath, FileMode.Open))
+            {
+                chunk.FeedData(fileStream);
+                AltChunk altChunk = new AltChunk();
+                altChunk.Id = altChunkId;
+                mainPart.Document
+                    .Body
+                    .InsertAfter(altChunk, mainPart.Document.Body
+                    .Elements().LastOrDefault());
+                mainPart.Document.Save();
+            }
+        }
+
+        public static void AddPageBreak(this Document document)
+        {
+            Body body = document.MainDocumentPart.Document.Body;
+            // Add new text.
+            Paragraph para = body.AppendChild(new Paragraph());
+            Run run = para.AppendChild(new Run());
+            run.AppendChild(new Break() { Type = BreakValues.Page });
         }
     }
 }
