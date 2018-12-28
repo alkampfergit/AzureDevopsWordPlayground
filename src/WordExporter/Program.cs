@@ -1,10 +1,12 @@
 ﻿using CommandLine;
+using Microsoft.TeamFoundation.VersionControl.Client;
 using Serilog;
 using Serilog.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using WordExporter.Core;
+using WordExporter.Core.WorkItems;
 using WordExporter.Support;
 
 namespace WordExporter
@@ -30,14 +32,27 @@ namespace WordExporter
 
             Connection connection = new Connection(options.ServiceAddress, options.GetAccessToken());
 
-            foreach (var tpname in connection.GetTeamProjectsNames())
+            DumpAllTeamProjects(connection);
+            WorkItemManger workItemManger = new WorkItemManger(connection);
+
+            var workItems = workItemManger.LoadAllWorkItemForAreaAndIteration("zoalord insurance", "zoalord insurance\\Release 1\\Sprint 6");
+            foreach (var workItem in workItems)
             {
-                Log.Debug("Team Project {tpname}", tpname);
+                Log.Debug("[{Id}/{Type}]: {Title}", workItem.Id, workItem.Type.Name, workItem.Title);
             }
+
             if (Environment.UserInteractive)
             {
                 Console.WriteLine("Execution completed, press a key to continue");
                 Console.ReadKey();
+            }
+        }
+
+        private static void DumpAllTeamProjects(Connection connection)
+        {
+            foreach (var tpname in connection.GetTeamProjectsNames())
+            {
+                Log.Debug("Team Project {tpname}", tpname);
             }
         }
 

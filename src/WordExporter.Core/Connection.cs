@@ -18,11 +18,13 @@ namespace WordExporter.Core
         public Connection(String accountUri, String accessToken)
         {
             ConnectToTfs(accountUri, accessToken);
-            workItemStore = _tfsCollection.GetService<WorkItemStore>();
+            _workItemStore = _tfsCollection.GetService<WorkItemStore>();
         }
 
         private TfsTeamProjectCollection _tfsCollection;
-        private WorkItemStore workItemStore;
+        private WorkItemStore _workItemStore;
+
+        public WorkItemStore WorkItemStore => _workItemStore;
 
         private bool ConnectToTfs(String accountUri, String accessToken)
         {
@@ -44,7 +46,7 @@ namespace WordExporter.Core
         /// <returns></returns>
         public IEnumerable<String> GetTeamProjectsNames()
         {
-            return workItemStore.Projects.OfType<Project>().Select(_ => _.Name);
+            return _workItemStore.Projects.OfType<Project>().Select(_ => _.Name);
         }
     }
 }

@@ -24,6 +24,12 @@ namespace WordExporter.Support
             HelpText = "File that contains access token to perform the migration, useful if you have token stored in a file in a protected directory accessible only by the account that is runnign the service")]
         public String AccessTokenFile { get; set; }
 
+        [Option(
+            "teamproject",
+            Required = true,
+            HelpText = "Name of the teamproject")]
+        public String TeamProject { get; set; }
+
         internal string GetAccessToken()
         {
             if (!String.IsNullOrEmpty(AccessTokenFile))
