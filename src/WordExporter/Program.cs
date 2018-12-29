@@ -35,7 +35,6 @@ namespace WordExporter
 
             DumpAllTeamProjects(connection);
 
-
             WorkItemManger workItemManger = new WorkItemManger(connection);
             workItemManger.SetTeamProject("zoalord insurance");
             var workItems = workItemManger.LoadAllWorkItemForAreaAndIteration(
@@ -47,7 +46,7 @@ namespace WordExporter
             {
                 foreach (var workItem in workItems)
                 {
-                    manipulator.InsertWorkItem(workItem);
+                    manipulator.InsertWorkItem(workItem, @"Templates\WorkItem.docx", true);
                 }
             }
 

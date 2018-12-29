@@ -1,16 +1,20 @@
-﻿using DocumentFormat.OpenXml.Packaging;
+﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.TeamFoundation.WorkItemTracking.Client;
-using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using WordExporter.Core.WordManipulation.Support;
+using WordExporter.Core.WorkItems;
+using A = DocumentFormat.OpenXml.Drawing;
+using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 
 namespace WordExporter.Core.WordManipulation
 {
@@ -19,17 +23,24 @@ namespace WordExporter.Core.WordManipulation
         public WordManipulator(String fileName, Boolean createNew)
         {
             if (!createNew && !File.Exists(fileName))
+            {
                 throw new ArgumentException($"File {fileName} does not exists and CreateNew is false.");
+            }
 
-            if (createNew == false)
-                throw new NotSupportedException("Still not able to open word for manipulation");
-
-            _document = WordprocessingDocument.Create(fileName, DocumentFormat.OpenXml.WordprocessingDocumentType.Document);
-            _mainDocumentPart = _document.AddMainDocumentPart();
-            _body = new Body();
-            _mainDocumentPart.Document = new Document(_body);
-
-            InitializeStyles();
+            if (createNew)
+            {
+                _document = WordprocessingDocument.Create(fileName, DocumentFormat.OpenXml.WordprocessingDocumentType.Document);
+                _mainDocumentPart = _document.AddMainDocumentPart();
+                _body = new Body();
+                _mainDocumentPart.Document = new Document(_body);
+                InitializeStyles();
+            }
+            else
+            {
+                _document = WordprocessingDocument.Open(fileName, true);
+                _mainDocumentPart = _document.MainDocumentPart;
+                _body = _mainDocumentPart.Document.Body;
+            }
         }
 
         private readonly WordprocessingDocument _document;
@@ -90,17 +101,359 @@ namespace WordExporter.Core.WordManipulation
 
         #region Manipulation of the word document to create data
 
-        public void InsertWorkItem(WorkItem workItem, Boolean insertPageBreak = true)
+        public void InsertWorkItem(WorkItem workItem, String workItemTemplateFile, Boolean insertPageBreak = true)
         {
-            Log.Debug("Adding to word work item [{Id}/{Type}]: {Title}", workItem.Id, workItem.Type.Name, workItem.Title);
-            AppendTextWithStyle("workItemTitle", $"{workItem.Id}: {workItem.Title}");
+            //ok we need to open the template, give it a new name, perform substitution and finally append to the existing document
+            var tempFile = Path.GetTempFileName();
+            File.Copy(workItemTemplateFile, tempFile, true);
+            using (WordManipulator m = new WordManipulator(tempFile, false))
+            {
+                m.SubstituteTokens(CreateDictionaryFromWorkItem(workItem));
+            }
 
-            AppendHtml($"<html><head></head><body>{workItem.Description}</body></html>");
+            AppendOtherWordFile(tempFile, insertPageBreak);
+            File.Delete(tempFile);
+        }
 
-            _body.Append(
-                new Paragraph(
-                new Run(
-                    new Break() { Type = BreakValues.Page })));
+        private Dictionary<String, Object> CreateDictionaryFromWorkItem(WorkItem workItem)
+        {
+            var retValue = new Dictionary<String, Object>();
+            retValue["title"] = workItem.Title;
+            retValue["description"] = new HtmlSubstitution(workItem.EmbedHtmlContent(workItem.Description));
+            retValue["assignedto"] = workItem.Fields["System.AssignedTo"].Value?.ToString() ?? String.Empty;
+            retValue["createdby"] = workItem.Fields["System.CreatedBy"].Value?.ToString() ?? String.Empty;
+            return retValue;
+        }
+
+        #endregion
+
+        #region Template handling
+
+        public WordManipulator AppendOtherWordFile(String wordFilePath, Boolean addPageBreak = true)
+        {
+            MainDocumentPart mainPart = _document.MainDocumentPart;
+            string altChunkId = "AltChunkId" + Guid.NewGuid().ToString();
+            AlternativeFormatImportPart chunk = mainPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.WordprocessingML, altChunkId);
+
+            using (FileStream fileStream = File.Open(wordFilePath, FileMode.Open))
+            {
+                chunk.FeedData(fileStream);
+                AltChunk altChunk = new AltChunk();
+                altChunk.Id = altChunkId;
+                mainPart.Document
+                    .Body
+                    .InsertAfter(altChunk, mainPart.Document.Body
+                    .Elements().LastOrDefault());
+                mainPart.Document.Save();
+            }
+            if (addPageBreak)
+            {
+                _body.Append(
+                   new Paragraph(
+                   new Run(
+                       new Break() { Type = BreakValues.Page })));
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// This does the very same stuff as <see cref="ReplaceInDocument(Dictionary{string, string}, bool)"/>
+        /// but it uses different internal technique to replace the document.
+        /// </summary>
+        /// <param name="tokenList"></param>
+        /// <param name="blankIfMissing"></param>
+        /// <returns></returns>
+        public WordManipulator SubstituteTokens(
+            Dictionary<string, Object> tokenList)
+        {
+            var realReplaceList = tokenList.ToDictionary(_ => CreateSubstitutionTokenFromName(_.Key), _ => _.Value);
+
+            var body = _document.MainDocumentPart.Document.Body;
+            SubstituteInParagraph(realReplaceList, body.Descendants<Paragraph>());
+
+            foreach (var header in _document.MainDocumentPart.HeaderParts)
+            {
+                SubstituteInParagraph(realReplaceList, header.RootElement.Descendants<Paragraph>());
+            }
+
+            foreach (var footer in _document.MainDocumentPart.FooterParts)
+            {
+                SubstituteInParagraph(realReplaceList, footer.RootElement.Descendants<Paragraph>());
+            }
+
+            return this;
+        }
+
+        /// <summary>
+        /// perform substitution in document content
+        /// </summary>
+        /// <param name="realReplaceList">This is a list that contains the tag enclosed in {{}}
+        /// as key, and can contain string or stream as values.</param>
+        /// <param name="paragraphs"></param>
+        private void SubstituteInParagraph(
+            Dictionary<string, Object> realReplaceList,
+            IEnumerable<Paragraph> paragraphs)
+        {
+            foreach (var paragraph in paragraphs)
+            {
+                //replace runs with entire code in it, it could happen that a single run
+                //contains the entire text.
+                var entireRuns = paragraph.Descendants<Run>().ToList();
+                foreach (var run in entireRuns)
+                {
+                    String innerText = run.InnerText;
+
+                    foreach (var replace in realReplaceList)
+                    {
+                        //Replace text only if the replace is a string.
+                        if (replace.Value is String)
+                        {
+                            //perform a real replace 
+                            if (innerText.Contains(replace.Key))
+                            {
+                                innerText = innerText.Replace(replace.Key, replace.Value as String);
+                            }
+                        }
+                    }
+
+                    //something is changed?
+                    if (run.InnerText != innerText)
+                    {
+                        var newRun = new Run(new Text(innerText));
+                        CopyPropertiesFromRun(run, newRun);
+                        paragraph.ReplaceChild(newRun, run);
+                    }
+                }
+
+                //Lets look for each key if it is found in the paragraph and it needs to be replaced.
+                //This is the real code that also replace images passed as a stream in dictionary
+                foreach (var replace in realReplaceList)
+                {
+                    //each time we restart we could have changed runs so we re-execute the linq query.
+                    Match match;
+                    do
+                    {
+                        //Each cycle runs can be changed
+                        List<RunMatch> runs = GetAllRunMatches(paragraph);
+                        var paragraphInnerText = paragraph.InnerText;
+                        match = Regex.Match(paragraphInnerText, @"\{\{" + replace.Key.Trim('}', '{') + @"(\:[0-9a-zA-Z_-]*?)?\}\}");
+                        if (match?.Success == true)
+                        {
+                            //ok we found a match, we need to grab all the run that encompass this match
+                            var start = match.Index;
+                            var end = start + match.Length;
+
+                            var runThatMatches = runs.Where(_ =>
+                                (_.RunStartPosition >= start && _.RunStartPosition < end)
+                                || (_.RunEndPosition > start && _.RunEndPosition <= end)
+                            ).ToList();
+
+                            //we have three part, whatever is before the  {{ the tag and then whatever is after }}
+                            //in the end we have three runs
+                            Run runBefore;
+                            var textOfFirstRun = runThatMatches.First().Run.InnerText;
+                            var startTokenPosition = textOfFirstRun.IndexOf("{{");
+                            if (startTokenPosition > 0)
+                            {
+                                runBefore = new Run(new Text(textOfFirstRun.Substring(0, startTokenPosition)));
+                            }
+                            else
+                            {
+                                runBefore = new Run(new Text(String.Empty));
+                            }
+
+                            //now we will add the real replace
+
+                            //finally we can append the trailing space
+                            Run runAfter;
+
+                            var textOfLastRun = runThatMatches.Last().Run.InnerText;
+                            var endTokenPosition = textOfLastRun.IndexOf("}}");
+                            if (endTokenPosition < textOfLastRun.Length - 3)
+                            {
+                                runAfter = new Run(new Text(textOfFirstRun.Substring(endTokenPosition + 2)));
+                            }
+                            else
+                            {
+                                runAfter = new Run(new Text(String.Empty));
+                            }
+
+                            //now the content, version 1, only text
+                            Object value = replace.Value;
+                            OpenXmlElement contextRun = CreateElementFromValue(value, match.Value);
+
+                            var firstRunToReplace = runThatMatches.First().Run;
+                            CopyPropertiesFromRun(firstRunToReplace, runBefore);
+                            CopyPropertiesFromRun(firstRunToReplace, contextRun as Run);
+                            CopyPropertiesFromRun(firstRunToReplace, runAfter);
+
+                            if (contextRun is AltChunk)
+                            {
+                                _body.InsertAfter(contextRun, paragraph);
+                                _body.RemoveChild(paragraph);
+                                break; //no more replace in this paragraph, html will replace everything
+                            }
+                            else
+                            {
+                                paragraph.InsertAfter(runBefore, firstRunToReplace);
+                                paragraph.InsertAfter(contextRun, firstRunToReplace);
+                                paragraph.InsertAfter(runAfter, firstRunToReplace);
+
+                                foreach (var runToRemove in runThatMatches)
+                                {
+                                    paragraph.RemoveChild(runToRemove.Run);
+                                }
+                            }
+                        }
+                    } while (match?.Success == true);
+                }
+            }
+        }
+
+        private OpenXmlElement CreateElementFromValue(object value, String match)
+        {
+            if (value == null)
+            {
+                return new Run(new Text(String.Empty));
+            }
+
+            switch (value)
+            {
+                case String str:
+                    return new Run(new Text(str));
+
+                case ImageSubstitution imageSubstitution:
+                    return CreateRunFromImage(imageSubstitution, match);
+
+                case HtmlSubstitution htmlSubstitution:
+                    return CreateChunkForHtmlPage(htmlSubstitution.HtmlValue);
+
+                default:
+                    throw new NotSupportedException($"Element of type {value.GetType().FullName} is not valid for substitution");
+            }
+        }
+
+        private Run CreateRunFromImage(ImageSubstitution imageSubstitution, String match)
+        {
+            var imageSplitted = match.Trim('{', '}').Split(':');
+            if (imageSplitted.Length == 2)
+            {
+                if (Int32.TryParse(imageSplitted[1], out Int32 width))
+                {
+                    imageSubstitution.ResizeToWidth(width);
+                }
+            }
+
+            ImagePart imagePart;
+            MainDocumentPart mainPart = _document.MainDocumentPart;
+            using (var ms = imageSubstitution.GetImageStream())
+            {
+                imagePart = mainPart.AddImagePart(ImagePartType.Jpeg);
+                imagePart.FeedData(ms);
+            }
+            Int64 cx = 9525 * imageSubstitution.Image.Width;
+            Int64 cy = 9525 * imageSubstitution.Image.Height;
+
+            // Define the reference of the image.
+            var element =
+                 new Drawing(
+                     new DW.Inline(
+                         new DW.Extent() { Cx = cx, Cy = cy },
+                         new DW.EffectExtent()
+                         {
+                             LeftEdge = 0L,
+                             TopEdge = 0L,
+                             RightEdge = 0L,
+                             BottomEdge = 0L
+                         },
+                         new DW.DocProperties()
+                         {
+                             Id = 1U,
+                             Name = Guid.NewGuid().ToString(),
+                         },
+                         new DW.NonVisualGraphicFrameDrawingProperties(
+                             new A.GraphicFrameLocks() { NoChangeAspect = true }),
+                         new A.Graphic(
+                             new A.GraphicData(
+                                 new PIC.Picture(
+                                     new PIC.NonVisualPictureProperties(
+                                         new PIC.NonVisualDrawingProperties()
+                                         {
+                                             Id = 0U,
+                                             Name = Guid.NewGuid().ToString(),
+                                         },
+                                         new PIC.NonVisualPictureDrawingProperties()),
+                                     new PIC.BlipFill(
+                                         new A.Blip(
+                                             new A.BlipExtensionList(
+                                                 new A.BlipExtension()
+                                                 {
+                                                     Uri =
+                                                        "{28A0092B-C50C-407E-A947-70E740481C1C}"
+                                                 })
+                                         )
+                                         {
+                                             Embed = mainPart.GetIdOfPart(imagePart),
+                                             CompressionState =
+                                             A.BlipCompressionValues.Print
+                                         },
+                                         new A.Stretch(
+                                             new A.FillRectangle())),
+                                     new PIC.ShapeProperties(
+                                         new A.Transform2D(
+                                             new A.Offset() { X = 0L, Y = 0L },
+                                             new A.Extents() { Cx = cx, Cy = cy }),
+                                         new A.PresetGeometry(
+                                             new A.AdjustValueList()
+                                         )
+                                         { Preset = A.ShapeTypeValues.Rectangle })
+                                         )
+                             )
+                             { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" })
+                     )
+                     {
+                         DistanceFromTop = 0U,
+                         DistanceFromBottom = 0U,
+                         DistanceFromLeft = 0U,
+                         DistanceFromRight = 0U,
+                         EditId = "50D07946"
+                     });
+
+            return new Run(element);
+        }
+
+        private static void CopyPropertiesFromRun(Run originalRun, Run run)
+        {
+            if (originalRun != null && run != null)
+            {
+                RunProperties runProperties = originalRun.Descendants<RunProperties>().FirstOrDefault();
+                if (runProperties != null && run != null)
+                {
+                    var copy = runProperties.CloneNode(true);
+                    run.InsertAt(copy, 0);
+                }
+            }
+        }
+
+        private static List<RunMatch> GetAllRunMatches(Paragraph paragraph)
+        {
+            var runs = paragraph.Descendants<Run>()
+                 .Select(_ => new RunMatch(_))
+                 .ToList();
+            Int32 starts = 0;
+            foreach (var element in runs)
+            {
+                element.RunStartPosition = starts;
+                starts += element.Run.InnerText.Length;
+                element.RunEndPosition = starts;
+            }
+
+            return runs;
+        }
+
+        private static string CreateSubstitutionTokenFromName(String tokenName)
+        {
+            return "{{" + tokenName + "}}";
         }
 
         #endregion
@@ -121,29 +474,56 @@ namespace WordExporter.Core.WordManipulation
             return this;
         }
 
-        public WordManipulator AppendHtml(String htmlPage)
+        public WordManipulator AppendHtml(OpenXmlElement refChild, String htmlPage)
         {
-            string altChunkId = "myid" + Guid.NewGuid().ToString();
-            MainDocumentPart mainDocPart = _document.MainDocumentPart;
+            AltChunk altChunk = CreateChunkForHtmlPage(htmlPage);
+            _document.MainDocumentPart.Document.Body.InsertAfter(altChunk, refChild);
+            return this;
+        }
 
-            using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(htmlPage)))
+        private AltChunk CreateChunkForHtmlPage(string htmlPage)
+        {
+            var realHtml = $"<html><head></head><body>{htmlPage}</body></html>";
+            string altChunkId = "myid" + Guid.NewGuid().ToString();
+            using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(realHtml)))
             {
                 // Create alternative format import part.
-                AlternativeFormatImportPart formatImportPart =    mainDocPart.AddAlternativeFormatImportPart(
-                    AlternativeFormatImportPartType.Html, 
+                AlternativeFormatImportPart formatImportPart = _document.MainDocumentPart.AddAlternativeFormatImportPart(
+                    AlternativeFormatImportPartType.Html,
                     altChunkId);
 
                 // Feed HTML data into format import part (chunk).
                 formatImportPart.FeedData(ms);
-                AltChunk altChunk = new AltChunk();
-                altChunk.Id = altChunkId;
-
-                mainDocPart.Document.Body.Append(altChunk);
             }
-            return this;
+            var altChunk = new AltChunk();
+            altChunk.Id = altChunkId;
+            return altChunk;
         }
 
-        #endregion  
+        //AppendHtml(p1, $"<html><head></head><body>{workItem.Description}</body></html>");
+        //public WordManipulator AppendHtml(OpenXmlElement refChild, String htmlPage)
+        //{
+        //    string altChunkId = "myid" + Guid.NewGuid().ToString();
+        //    MainDocumentPart mainDocPart = _document.MainDocumentPart;
+
+        //    using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(htmlPage)))
+        //    {
+        //        // Create alternative format import part.
+        //        AlternativeFormatImportPart formatImportPart = mainDocPart.AddAlternativeFormatImportPart(
+        //            AlternativeFormatImportPartType.Html,
+        //            altChunkId);
+
+        //        // Feed HTML data into format import part (chunk).
+        //        formatImportPart.FeedData(ms);
+        //        AltChunk altChunk = new AltChunk();
+        //        altChunk.Id = altChunkId;
+
+        //        mainDocPart.Document.Body.InsertAfter(altChunk, refChild);
+        //    }
+        //    return this;
+        //}
+
+        #endregion
 
         #region Helpers
 
@@ -167,9 +547,13 @@ namespace WordExporter.Core.WordManipulation
                 // stylesPart variable.
                 StylesPart stylesPart = null;
                 if (getStylesWithEffectsPart)
+                {
                     stylesPart = docPart.StylesWithEffectsPart;
+                }
                 else
+                {
                     stylesPart = docPart.StyleDefinitionsPart;
+                }
 
                 // If the part exists, read it into the XDocument.
                 if (stylesPart != null)
