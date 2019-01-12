@@ -38,8 +38,8 @@ namespace WordExporter
             WorkItemManger workItemManger = new WorkItemManger(connection);
             workItemManger.SetTeamProject("zoalord insurance");
             var workItems = workItemManger.LoadAllWorkItemForAreaAndIteration(
-                "zoalord insurance",
-                "zoalord insurance\\Release 1\\Sprint 6");
+                options.AreaPath,
+                options.IterationPath);
 
             var fileName = Path.GetTempFileName() + ".docx";
             using (WordManipulator manipulator = new WordManipulator(fileName, true))

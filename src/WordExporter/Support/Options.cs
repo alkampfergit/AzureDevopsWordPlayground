@@ -25,9 +25,9 @@ namespace WordExporter.Support
         public String AccessTokenFile { get; set; }
 
         [Option(
-         "token",
-         Required = false,
-         HelpText = "Access token")]
+             "token",
+             Required = false,
+             HelpText = "Access token")]
         public String AccessToken { get; set; }
 
         [Option(
@@ -35,6 +35,18 @@ namespace WordExporter.Support
             Required = true,
             HelpText = "Name of the teamproject")]
         public String TeamProject { get; set; }
+
+        [Option(
+            "iterationpath",
+            Required = false,
+            HelpText = "Iteration Path")]
+        public String IterationPath { get; set; }
+
+        [Option(
+            "areapath",
+            Required = false,
+            HelpText = "Area Path")]
+        public String AreaPath { get; set; }
 
         internal string GetAccessToken()
         {
