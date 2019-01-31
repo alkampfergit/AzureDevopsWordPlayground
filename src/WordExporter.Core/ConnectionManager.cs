@@ -8,16 +8,28 @@ using System.Linq;
 
 namespace WordExporter.Core
 {
-    public class Connection
+    public class ConnectionManager
     {
         /// <summary>
         /// Perform a connection with an access token, simplest way to give permission to a program
         /// to access your account.
         /// </summary>
         /// <param name="accessToken"></param>
-        public Connection(String accountUri, String accessToken)
+        public ConnectionManager(String accountUri, String accessToken)
         {
             ConnectToTfs(accountUri, accessToken);
+            _workItemStore = _tfsCollection.GetService<WorkItemStore>();
+        }
+
+        /// <summary>
+        /// Create an instance where the TFS Project collection was already passed by the 
+        /// calleer. 
+        /// </summary>
+        /// <param name="accessToken"></param>
+        public ConnectionManager(TfsTeamProjectCollection tfsTeamProjectCollection)
+        {
+            _tfsCollection = tfsTeamProjectCollection;
+            tfsTeamProjectCollection.Authenticate();
             _workItemStore = _tfsCollection.GetService<WorkItemStore>();
         }
 

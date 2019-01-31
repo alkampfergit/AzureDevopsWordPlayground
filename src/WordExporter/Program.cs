@@ -32,7 +32,7 @@ namespace WordExporter
                 return;
             }
 
-            Connection connection = new Connection(options.ServiceAddress, options.GetAccessToken());
+            ConnectionManager connection = new ConnectionManager(options.ServiceAddress, options.GetAccessToken());
 
             DumpAllTeamProjects(connection);
 
@@ -63,7 +63,7 @@ namespace WordExporter
             }
         }
 
-        private static void DumpAllTeamProjects(Connection connection)
+        private static void DumpAllTeamProjects(ConnectionManager connection)
         {
             foreach (var tpname in connection.GetTeamProjectsNames())
             {

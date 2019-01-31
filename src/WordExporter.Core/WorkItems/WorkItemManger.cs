@@ -9,10 +9,10 @@ namespace WordExporter.Core.WorkItems
 {
     public class WorkItemManger
     {
-        private readonly Connection _connection;
+        private readonly ConnectionManager _connection;
         private string _teamProjectName;
 
-        public WorkItemManger(Connection connection)
+        public WorkItemManger(ConnectionManager connection)
         {
             _connection = connection;
         }
