@@ -48,6 +48,12 @@ namespace WordExporter.Support
             HelpText = "Area Path")]
         public String AreaPath { get; set; }
 
+        [Option(
+            "templateName",
+            Required = true,
+            HelpText = "Name of the template folder that contains word templates to be found.")]
+        public String TemplateName { get; set; }
+
         internal string GetAccessToken()
         {
             if (!String.IsNullOrEmpty(AccessTokenFile))

@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WordExporter", "WordExporte
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WordExporter.Core", "WordExporter.Core\WordExporter.Core.csproj", "{ABB29D4F-6ACE-481B-AAA8-C0F5BFF0DBA8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WordExporter.Tests", "WordExporter.Tests\WordExporter.Tests.csproj", "{06EEAA0C-C191-42D6-A9E0-F44C34E05FBB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{ABB29D4F-6ACE-481B-AAA8-C0F5BFF0DBA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ABB29D4F-6ACE-481B-AAA8-C0F5BFF0DBA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ABB29D4F-6ACE-481B-AAA8-C0F5BFF0DBA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06EEAA0C-C191-42D6-A9E0-F44C34E05FBB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06EEAA0C-C191-42D6-A9E0-F44C34E05FBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06EEAA0C-C191-42D6-A9E0-F44C34E05FBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06EEAA0C-C191-42D6-A9E0-F44C34E05FBB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

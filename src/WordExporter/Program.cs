@@ -6,13 +6,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using WordExporter.Core;
+using WordExporter.Core.Templates;
 using WordExporter.Core.WordManipulation;
 using WordExporter.Core.WorkItems;
 using WordExporter.Support;
 
 namespace WordExporter
 {
-    class Program
+    public static class Program
     {
         static void Main(string[] args)
         {
@@ -42,11 +43,14 @@ namespace WordExporter
                 options.IterationPath);
 
             var fileName = Path.GetTempFileName() + ".docx";
+            var templateManager = new TemplateManager("Templates");
+            var template = templateManager.GetWordTemplate(options.TemplateName);
+
             using (WordManipulator manipulator = new WordManipulator(fileName, true))
             {
                 foreach (var workItem in workItems)
                 {
-                    manipulator.InsertWorkItem(workItem, @"Templates\WorkItem.docx", true);
+                    manipulator.InsertWorkItem(workItem, template.GetTemplateFor(workItem.Type.Name), true);
                 }
             }
 

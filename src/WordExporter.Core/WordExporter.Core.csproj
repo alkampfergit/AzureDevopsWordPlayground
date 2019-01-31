@@ -276,6 +276,8 @@
   <ItemGroup>
     <Compile Include="Connection.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Templates\TemplateManager.cs" />
+    <Compile Include="Templates\WordTemplate.cs" />
     <Compile Include="WordManipulation\Support\HtmlSubstitution.cs" />
     <Compile Include="WordManipulation\Support\ImageSubstitution.cs" />
     <Compile Include="WordManipulation\Support\RunMatch.cs" />
