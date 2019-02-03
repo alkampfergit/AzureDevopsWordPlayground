@@ -1,12 +1,13 @@
 using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.Command;
 using Microsoft.TeamFoundation.Client;
+using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
 using System;
+using System.Net;
 using System.Windows.Input;
-using WordExporter.Core.Support;
 
 namespace WordExporter.UI.ViewModel
 {
@@ -75,12 +76,17 @@ namespace WordExporter.UI.ViewModel
 
         private void ConnectMethod()
         {
-            var credentials = new VssClientCredentials();
-            credentials.Storage = new VssClientCredentialCachingStorage();
-            VssConnection connection = new VssConnection(new Uri(Address), credentials);
+// Create instance of VssConnection using Visual Studio sign-in prompt
+VssConnection connection = new VssConnection(new Uri(Address), new VssClientCredentials());
+WorkItemTrackingHttpClient witClient = connection.GetClient<WorkItemTrackingHttpClient>();
+var items = witClient.GetQueriesAsync("TestMigration").Result;
 
-            connection.ConnectAsync().SyncResult();
-            TfsTeamProjectCollection collection = new TfsTeamProjectCollection(new Uri(Address), connection.Credentials);
+            NetworkCredential netCred = new NetworkCredential("", "");
+            BasicAuthCredential basicCred = new BasicAuthCredential(netCred);
+            TfsClientCredentials tfsCred = new TfsClientCredentials(basicCred);
+            tfsCred.AllowInteractive = true;
+
+            TfsTeamProjectCollection collection = new TfsTeamProjectCollection(new Uri(Address), tfsCred);
             collection.Authenticate();
             Connected = true;
         }
