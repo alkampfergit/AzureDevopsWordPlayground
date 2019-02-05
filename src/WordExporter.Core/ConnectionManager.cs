@@ -2,20 +2,29 @@
 using Microsoft.TeamFoundation.WorkItemTracking.Client;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
+using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace WordExporter.Core
 {
     public class ConnectionManager
     {
+        public static ConnectionManager Instance { get; private set; }
+
+        public ConnectionManager()
+        {
+            Instance = this;
+        }
+
         /// <summary>
         /// Perform a connection with an access token, simplest way to give permission to a program
         /// to access your account.
         /// </summary>
         /// <param name="accessToken"></param>
-        public ConnectionManager(String accountUri, String accessToken)
+        public ConnectionManager(String accountUri, String accessToken) : this()
         {
             ConnectToTfs(accountUri, accessToken);
             _workItemStore = _tfsCollection.GetService<WorkItemStore>();
@@ -26,15 +35,32 @@ namespace WordExporter.Core
         /// calleer. 
         /// </summary>
         /// <param name="accessToken"></param>
-        public ConnectionManager(TfsTeamProjectCollection tfsTeamProjectCollection)
+        public ConnectionManager(TfsTeamProjectCollection tfsTeamProjectCollection) : this()
         {
             _tfsCollection = tfsTeamProjectCollection;
             tfsTeamProjectCollection.Authenticate();
             _workItemStore = _tfsCollection.GetService<WorkItemStore>();
         }
 
+        public async Task ConnectAsync(string accountUri)
+        {
+            Uri _uri = new Uri(accountUri);
+
+            var creds = new VssClientCredentials(
+                new Microsoft.VisualStudio.Services.Common.WindowsCredential(false),
+                new VssFederatedCredential(true),
+                CredentialPromptType.PromptIfNeeded);
+
+            _vssConnection = new VssConnection(_uri, creds);
+            await _vssConnection.ConnectAsync().ConfigureAwait(false);
+
+            _tfsCollection = new TfsTeamProjectCollection(_uri, creds);
+            _tfsCollection.EnsureAuthenticated();
+        }
+
         private TfsTeamProjectCollection _tfsCollection;
-        private WorkItemStore _workItemStore;
+        private VssConnection _vssConnection;
+        private readonly WorkItemStore _workItemStore;
 
         public WorkItemStore WorkItemStore => _workItemStore;
 
@@ -59,6 +85,11 @@ namespace WordExporter.Core
         public IEnumerable<String> GetTeamProjectsNames()
         {
             return _workItemStore.Projects.OfType<Project>().Select(_ => _.Name);
+        }
+
+        public T GetClient<T>() where T : VssHttpClientBase
+        {
+            return _vssConnection.GetClient<T>();
         }
     }
 }
