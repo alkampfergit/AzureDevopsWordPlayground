@@ -11,6 +11,7 @@ using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using WordExporter.Core;
@@ -65,6 +66,20 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        private String _status;
+
+        public String Status
+        {
+            get
+            {
+                return _status;
+            }
+            set
+            {
+                Set<String>(() => this.Status, ref _status, value);
+            }
+        }
+
         private String _address;
 
         public String Address
@@ -80,6 +95,7 @@ namespace WordExporter.UI.ViewModel
         }
 
         private ObservableCollection<TeamProject> _teamProjects = new ObservableCollection<TeamProject>();
+
         public ObservableCollection<TeamProject> TeamProjects
         {
             get
@@ -94,6 +110,7 @@ namespace WordExporter.UI.ViewModel
         }
 
         private TeamProject _selectedTeamProject;
+
         public TeamProject SelectedTeamProject
         {
             get
@@ -106,8 +123,9 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
-        private ObservableCollection<QueryHierarchyItem> _queries = new ObservableCollection<QueryHierarchyItem>();
-        public ObservableCollection<QueryHierarchyItem> Queries
+        private ObservableCollection<QueryViewModel> _queries = new ObservableCollection<QueryViewModel>();
+
+        public ObservableCollection<QueryViewModel> Queries
         {
             get
             {
@@ -120,37 +138,39 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        private QueryViewModel _selectedQuery;
+
+        public QueryViewModel SelectedQuery
+        {
+            get
+            {
+                return _selectedQuery;
+            }
+            set
+            {
+                Set<QueryViewModel>(() => this.SelectedQuery, ref _selectedQuery, value);
+            }
+        }
+
         public ICommand Connect { get; private set; }
         public ICommand GetQueries { get; private set; }
 
         private async void ConnectMethod()
         {
+            Status = "Connecting";
             var connectionManager = new ConnectionManager();
             await connectionManager.ConnectAsync(Address);
 
             ProjectCollectionHttpClient projectCollectionHttpClient = connectionManager.GetClient<ProjectCollectionHttpClient>();
+            Status = "Connected, Retrieving project collection";
 
-            foreach (var projectCollectionReference in projectCollectionHttpClient.GetProjectCollections(10, 0).Result)
-            {
-                // retrieve a reference to the actual project collection based on its (reference) .Id
-                var projectCollection = projectCollectionHttpClient.GetProjectCollection(projectCollectionReference.Id.ToString()).Result;
+            await GetCollecitonAsync(projectCollectionHttpClient);
 
-                // the 'web' Url is the one for the PC itself, the API endpoint one is different, see below
-                var webUrlForProjectCollection = projectCollection.Links.Links["web"] as ReferenceLink;
-            }
-
+            Status = "Connected, Retrieving Team Projects";
             var projectHttpClient = connectionManager.GetClient<ProjectHttpClient>();
 
-            // then - same as above.. iterate over the project references (with a hard-coded pagination of the first 10 entries only)
-            foreach (var projectReference in projectHttpClient.GetProjects(top: 100, skip: 0).Result)
-            {
-                // and then get ahold of the actual project
-                var teamProject = projectHttpClient.GetProject(projectReference.Id.ToString()).Result;
-                var urlForTeamProject = ((ReferenceLink)teamProject.Links.Links["web"]).Href;
-
-                _teamProjects.Add(teamProject);
-            }
-
+            await GetTeamProjectAsync(projectHttpClient);
+            Status = "Connected, List of team Project retrieved";
             Connected = true;
 
             //// Connect to VSTS
@@ -171,33 +191,72 @@ namespace WordExporter.UI.ViewModel
             //collection.Authenticate();
         }
 
+        private Task GetCollecitonAsync(ProjectCollectionHttpClient projectCollectionHttpClient)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                foreach (var projectCollectionReference in projectCollectionHttpClient.GetProjectCollections(10, 0).Result)
+                {
+                    // retrieve a reference to the actual project collection based on its (reference) .Id
+                    var projectCollection = projectCollectionHttpClient.GetProjectCollection(projectCollectionReference.Id.ToString()).Result;
+
+                    // the 'web' Url is the one for the PC itself, the API endpoint one is different, see below
+                    var webUrlForProjectCollection = projectCollection.Links.Links["web"] as ReferenceLink;
+                }
+            });
+        }
+
+        private async Task GetTeamProjectAsync(ProjectHttpClient projectHttpClient)
+        {
+            // then - same as above.. iterate over the project references (with a hard-coded pagination of the first 10 entries only)
+            var tpList = await Task<List<TeamProject>>.Run(() =>
+            {
+                List<TeamProject> tempUnorderedListOfTeamProjects = new List<TeamProject>();
+                foreach (var projectReference in projectHttpClient.GetProjects(top: 100, skip: 0).Result)
+                {
+                    // and then get ahold of the actual project
+                    var teamProject = projectHttpClient.GetProject(projectReference.Id.ToString()).Result;
+                    var urlForTeamProject = ((ReferenceLink)teamProject.Links.Links["web"]).Href;
+
+                    tempUnorderedListOfTeamProjects.Add(teamProject);
+                }
+                return tempUnorderedListOfTeamProjects;
+            });
+
+            foreach (var teamProject in tpList.OrderBy(tp => tp.Name))
+            {
+                _teamProjects.Add(teamProject);
+            }
+        }
+
         public async void GetQueriesMethod()
         {
             WorkItemTrackingHttpClient witClient = ConnectionManager.Instance.GetClient<WorkItemTrackingHttpClient>();
             var queries = witClient.GetQueriesAsync(SelectedTeamProject.Name, depth: 2).Result;
             Queries.Clear();
-            await PopulateQueries(witClient, queries);
+            await PopulateQueries(String.Empty, witClient, queries);
         }
 
-        private async Task PopulateQueries(WorkItemTrackingHttpClient witClient, IEnumerable<QueryHierarchyItem> queries)
+        private async Task PopulateQueries(String actualPath, WorkItemTrackingHttpClient witClient, IEnumerable<QueryHierarchyItem> queries)
         {
             foreach (var query in queries)
             {
-                if (query.IsFolder == true)
+                if (query.IsFolder != true)
                 {
-                    Queries.Add(query);
+                    Queries.Add(new QueryViewModel(actualPath, query));
                 }
                 if (query.HasChildren == true)
                 {
+                    var newPath = actualPath + '/' + query.Name;
                     if (query.Children == null)
                     {
                         //need to requery the store to grab reference to the query.
                         var queryReloaded = await witClient.GetQueryAsync(SelectedTeamProject.Id, query.Path, depth: 2);
-                        await PopulateQueries(witClient, queryReloaded.Children);
+                        await PopulateQueries(newPath, witClient, queryReloaded.Children);
                     }
                     else
                     {
-                        await PopulateQueries(witClient, query.Children);
+                        await PopulateQueries(newPath, witClient, query.Children);
                     }
                 }
             }
