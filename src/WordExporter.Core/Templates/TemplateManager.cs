@@ -11,12 +11,16 @@ namespace WordExporter.Core.Templates
     {
         public TemplateManager(String baseTemplateFolder)
         {
-            _baseTemplateFolder = baseTemplateFolder ?? throw new ArgumentNullException(nameof(baseTemplateFolder));
+            if (baseTemplateFolder == null)
+                throw new ArgumentNullException(nameof(baseTemplateFolder));
+
             _templates = new Dictionary<string, WordTemplate>(StringComparer.OrdinalIgnoreCase);
 
-            if (!Directory.Exists(baseTemplateFolder))
+            var dinfo = new DirectoryInfo(baseTemplateFolder);
+            if (!dinfo.Exists)
                 throw new ArgumentException($"Template folder {baseTemplateFolder} does not exists.", nameof(baseTemplateFolder));
 
+            _baseTemplateFolder = dinfo.FullName;
             ScanFortemplate();
         }
 

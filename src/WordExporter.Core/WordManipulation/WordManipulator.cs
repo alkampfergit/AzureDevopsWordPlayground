@@ -104,7 +104,7 @@ namespace WordExporter.Core.WordManipulation
         public void InsertWorkItem(WorkItem workItem, String workItemTemplateFile, Boolean insertPageBreak = true)
         {
             //ok we need to open the template, give it a new name, perform substitution and finally append to the existing document
-            var tempFile = Path.GetTempFileName();
+            var tempFile = Path.Combine( Path.GetTempPath(), Guid.NewGuid().ToString() + ".docx");
             File.Copy(workItemTemplateFile, tempFile, true);
             using (WordManipulator m = new WordManipulator(tempFile, false))
             {
@@ -119,9 +119,16 @@ namespace WordExporter.Core.WordManipulation
         {
             var retValue = new Dictionary<String, Object>();
             retValue["title"] = workItem.Title;
+            //Some help to avoid forcing the user to use System.AssignedTo etc for most commonly used fields.
             retValue["description"] = new HtmlSubstitution(workItem.EmbedHtmlContent(workItem.Description));
             retValue["assignedto"] = workItem.Fields["System.AssignedTo"].Value?.ToString() ?? String.Empty;
             retValue["createdby"] = workItem.Fields["System.CreatedBy"].Value?.ToString() ?? String.Empty;
+
+            //All the fields will be set in raw format.
+            foreach (Field field in workItem.Fields)
+            {
+                retValue[field.Name] = field.Value?.ToString() ?? String.Empty;
+            }
             return retValue;
         }
 
@@ -269,9 +276,9 @@ namespace WordExporter.Core.WordManipulation
 
                             var textOfLastRun = runThatMatches.Last().Run.InnerText;
                             var endTokenPosition = textOfLastRun.IndexOf("}}");
-                            if (endTokenPosition < textOfLastRun.Length - 3)
+                            if (endTokenPosition <= textOfLastRun.Length - 3)
                             {
-                                runAfter = new Run(new Text(textOfFirstRun.Substring(endTokenPosition + 2)));
+                                runAfter = new Run(new Text(textOfLastRun.Substring(endTokenPosition + 2)));
                             }
                             else
                             {
@@ -295,9 +302,9 @@ namespace WordExporter.Core.WordManipulation
                             }
                             else
                             {
-                                paragraph.InsertAfter(runBefore, firstRunToReplace);
-                                paragraph.InsertAfter(contextRun, firstRunToReplace);
-                                paragraph.InsertAfter(runAfter, firstRunToReplace);
+                                paragraph.InsertBefore(runBefore, firstRunToReplace);
+                                paragraph.InsertBefore(contextRun, firstRunToReplace);
+                                paragraph.InsertBefore(runAfter, firstRunToReplace);
 
                                 foreach (var runToRemove in runThatMatches)
                                 {
@@ -522,6 +529,117 @@ namespace WordExporter.Core.WordManipulation
         //    }
         //    return this;
         //}
+
+        #endregion
+
+        #region Table
+
+        /// <summary>
+        /// <para>
+        /// This is a really rudimental method to fill a table with content, it assumes
+        /// that the opened document has only one table, and it will fill the table.
+        /// with data.
+        /// </para>
+        /// <para>
+        /// If the table already have rows, all rows will be deleted, but the first row
+        /// will be used to maintain the formatting styles. This means that if you want
+        /// formatting to be maintained you should simply insert a row with or without data
+        /// formatted as you like.
+        /// </para>
+        /// </summary>
+        /// <param name="skipHeader">If true it will skip the first line of the table.</param>
+        /// <param name="data">this is a matrix, expressed by a couple of IEnumerable to simplify
+        /// data passing</param>
+        /// <returns></returns>
+        public WordManipulator FillTable(
+            Boolean skipHeader,
+            IEnumerable<IEnumerable<Object>> data)
+        {
+            var table = _document.MainDocumentPart.Document.Body
+                .Descendants<Table>()
+                .FirstOrDefault();
+            if (table != null)
+            {
+                //remove every rows but first save the first two rows for the formatting.
+                var rows = table.Elements<TableRow>().ToList();
+                Int32 skip = skipHeader ? 1 : 0;
+                foreach (var row in rows.Skip(skip))
+                {
+                    row.Remove();
+                }
+
+                Boolean isFirstRow = true;
+                foreach (var dataRow in data)
+                {
+                    TableRow row = null;
+                    TableRow templateRow;
+                    //template rows depends from skipping or not skipping the header template.
+                    if (skipHeader)
+                    {
+                        //header is skipped, take the second row if present.
+                        templateRow = rows.Skip(1).FirstOrDefault();
+                    }
+                    else
+                    {
+                        //we do not want to skip header
+                        var rowToSkip = isFirstRow || rows.Count < 2 ? 0 : 1;
+                        templateRow = rows.Skip(rowToSkip).FirstOrDefault();
+                    }
+                    if (templateRow == null)
+                    {
+                        row = new TableRow();
+                        foreach (var dataCell in dataRow)
+                        {
+                            var cell = new TableCell();
+
+                            // Specify the table cell content.
+                            cell.Append(new Paragraph(new Run(new Text(dataCell.ToString()))));
+
+                            // Append the table cell to the table row.
+                            row.Append(cell);
+                        }
+                    }
+                    else
+                    {
+                        row = (TableRow)templateRow.CloneNode(true);
+                        //Grab all the run style of first row to copy on all subsequence cell.
+                        var runs = templateRow.Descendants<TableCell>()
+                            .Select(_ => _.Descendants<Run>().FirstOrDefault())
+                            .ToList();
+                        var cells = row.Descendants<TableCell>().ToList();
+                        Int32 cellIndex = 0;
+                        foreach (var dataCell in dataRow)
+                        {
+                            if (cellIndex < cells.Count)
+                            {
+                                var cell = cells[cellIndex];
+                                var run = runs[cellIndex];
+
+                                // Specify the table cell content.
+                                Run runToAdd = new Run(new Text(dataCell.ToString()));
+                                CopyPropertiesFromRun(run, runToAdd);
+
+                                //we can  have two distinct situation, we have or we do not have paragraph
+                                var paragraph = cell.Descendants<Paragraph>().FirstOrDefault();
+                                if (paragraph == null)
+                                {
+                                    cell.Append(new Paragraph(runToAdd));
+                                }
+                                else
+                                {
+                                    paragraph.RemoveAllChildren<Run>();
+                                    paragraph.Append(runToAdd);
+                                }
+                            }
+                            cellIndex++;
+                        }
+                    }
+                    table.Append(row);
+                    isFirstRow = false;
+                }
+            }
+            return this;
+        }
 
         #endregion
 

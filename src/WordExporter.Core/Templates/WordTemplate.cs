@@ -17,11 +17,13 @@ namespace WordExporter.Core.Templates
     {
         public WordTemplate(String templateFolder)
         {
-            _templateFolder = templateFolder ?? throw new ArgumentNullException(nameof(templateFolder));
+            if (templateFolder == null)
+                throw new ArgumentNullException(nameof(templateFolder));
+
             _templateFileNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             var dinfo = new DirectoryInfo(templateFolder);
-
+            _templateFolder = dinfo.FullName;
             Name = dinfo.Name;
             ScanFolder();
         }
@@ -51,6 +53,30 @@ namespace WordExporter.Core.Templates
                 return _templateFileNames["WorkItem"];
             }
             return templateFile;
+        }
+
+        /// <summary>
+        /// Retrieve a table file name, if <paramref name="createTempVersion"/> is true it 
+        /// will create a temp file name and then copy the original file to avoid messing
+        /// up with the original template file.
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <param name="createTempVersion">If false it will return the original path of 
+        /// docx file in the template folder, pay attention because if you are going to 
+        /// modifiy it, it will be modified forever.</param>
+        /// <returns></returns>
+        public string GetTable(string tableName, Boolean createTempVersion)
+        {
+            String baseFile = Path.Combine(_templateFolder, "Table" + tableName + ".docx");
+            if (!File.Exists(baseFile))
+                throw new ArgumentException($"There is no table file for table name {tableName}");
+
+            if (!createTempVersion)
+                return baseFile;
+
+            String tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".docx");
+            File.Copy(baseFile, tempFile);
+            return tempFile;
         }
     }
 }

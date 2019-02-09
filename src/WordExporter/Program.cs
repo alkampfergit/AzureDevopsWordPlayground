@@ -1,11 +1,13 @@
 ﻿using CommandLine;
 using Microsoft.TeamFoundation.VersionControl.Client;
+using Microsoft.TeamFoundation.WorkItemTracking.Client;
 using Serilog;
 using Serilog.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using WordExporter.Core;
+using WordExporter.Core.Support;
 using WordExporter.Core.Templates;
 using WordExporter.Core.WordManipulation;
 using WordExporter.Core.WorkItems;
@@ -48,6 +50,7 @@ namespace WordExporter
 
             using (WordManipulator manipulator = new WordManipulator(fileName, true))
             {
+                AddTableContent(manipulator, workItems, template);
                 foreach (var workItem in workItems)
                 {
                     manipulator.InsertWorkItem(workItem, template.GetTemplateFor(workItem.Type.Name), true);
@@ -61,6 +64,29 @@ namespace WordExporter
                 Console.WriteLine("Execution completed, press a key to continue");
                 Console.ReadKey();
             }
+        }
+
+        private static void AddTableContent(
+            WordManipulator manipulator,
+            List<WorkItem> workItems,
+            WordTemplate template)
+        {
+            string tableFileName = template.GetTable("A", true);
+            using (var tableManipulator = new WordManipulator(tableFileName, false))
+            {
+                List<List<String>> table = new List<List<string>>();
+                foreach (WorkItem workItem in workItems)
+                {
+                    List<String> row = new List<string>();
+                    row.Add(workItem.Id.ToString());
+                    row.Add(workItem.GetFieldValueAsString("System.AssignedTo"));
+                    row.Add(workItem.AttachedFileCount.ToString());
+                    table.Add(row);
+                }
+                tableManipulator.FillTable(true, table);
+            }
+            manipulator.AppendOtherWordFile(tableFileName);
+            File.Delete(tableFileName);
         }
 
         private static void DumpAllTeamProjects(ConnectionManager connection)
