@@ -153,6 +153,7 @@ namespace WordExporter.UI.ViewModel
         }
 
         public ICommand Connect { get; private set; }
+
         public ICommand GetQueries { get; private set; }
 
         private async void ConnectMethod()
@@ -232,7 +233,7 @@ namespace WordExporter.UI.ViewModel
         public async void GetQueriesMethod()
         {
             WorkItemTrackingHttpClient witClient = ConnectionManager.Instance.GetClient<WorkItemTrackingHttpClient>();
-            var queries = witClient.GetQueriesAsync(SelectedTeamProject.Name, depth: 2).Result;
+            var queries =await witClient.GetQueriesAsync(SelectedTeamProject.Name, depth: 2);
             Queries.Clear();
             await PopulateQueries(String.Empty, witClient, queries);
         }
@@ -243,7 +244,7 @@ namespace WordExporter.UI.ViewModel
             {
                 if (query.IsFolder != true)
                 {
-                    Queries.Add(new QueryViewModel(actualPath, query));
+                    Queries.Add(new QueryViewModel(this, actualPath, query));
                 }
                 if (query.HasChildren == true)
                 {

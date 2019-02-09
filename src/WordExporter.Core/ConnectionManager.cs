@@ -27,6 +27,11 @@ namespace WordExporter.Core
         public ConnectionManager(String accountUri, String accessToken) : this()
         {
             ConnectToTfs(accountUri, accessToken);
+            InitBaseServices();
+        }
+
+        private void InitBaseServices()
+        {
             _workItemStore = _tfsCollection.GetService<WorkItemStore>();
         }
 
@@ -39,7 +44,7 @@ namespace WordExporter.Core
         {
             _tfsCollection = tfsTeamProjectCollection;
             tfsTeamProjectCollection.Authenticate();
-            _workItemStore = _tfsCollection.GetService<WorkItemStore>();
+            InitBaseServices();
         }
 
         public async Task ConnectAsync(string accountUri)
@@ -56,11 +61,12 @@ namespace WordExporter.Core
 
             _tfsCollection = new TfsTeamProjectCollection(_uri, creds);
             _tfsCollection.EnsureAuthenticated();
+            InitBaseServices();
         }
 
         private TfsTeamProjectCollection _tfsCollection;
         private VssConnection _vssConnection;
-        private readonly WorkItemStore _workItemStore;
+        private WorkItemStore _workItemStore;
 
         public WorkItemStore WorkItemStore => _workItemStore;
 
