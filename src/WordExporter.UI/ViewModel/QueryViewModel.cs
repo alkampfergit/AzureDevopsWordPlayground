@@ -89,8 +89,6 @@ namespace WordExporter.UI.ViewModel
                 Dictionary<String, String> parameters = new Dictionary<String, String>();
                 parameters.Add("project", _mainViewModel.SelectedTeamProject.Name);
                 var queryResult = ConnectionManager.Instance.WorkItemStore.Query(_query.Wiql, parameters);
-
-              
             }
             else
             {

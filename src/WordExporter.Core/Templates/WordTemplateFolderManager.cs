@@ -1,9 +1,11 @@
-﻿using System;
+﻿using Sprache;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WordExporter.Core.Templates.Parser;
 
 namespace WordExporter.Core.Templates
 {
@@ -13,9 +15,9 @@ namespace WordExporter.Core.Templates
     /// they are planned to export, and a WorkItem.docx that is the fallback
     /// in case specific file for work item is not present.
     /// </summary>
-    public class WordTemplate
+    public class WordTemplateFolderManager
     {
-        public WordTemplate(String templateFolder)
+        public WordTemplateFolderManager(String templateFolder)
         {
             if (templateFolder == null)
                 throw new ArgumentNullException(nameof(templateFolder));
@@ -33,6 +35,8 @@ namespace WordExporter.Core.Templates
 
         public String Name { get; private set; }
 
+        public TemplateDefinition TemplateDefinition { get; private set; }
+
         private void ScanFolder()
         {
             var files = Directory.EnumerateFiles(_templateFolder, "*.docx");
@@ -40,6 +44,11 @@ namespace WordExporter.Core.Templates
             {
                 var finfo = new FileInfo(file);
                 _templateFileNames.Add(Path.GetFileNameWithoutExtension(file), finfo.FullName);
+            }
+            var structureFile = Path.Combine(_templateFolder, "structure.txt");
+            if (File.Exists(structureFile))
+            {
+                TemplateDefinition = ConfigurationParser.TemplateDefinition.Parse(File.ReadAllText(structureFile));
             }
         }
 
@@ -53,6 +62,15 @@ namespace WordExporter.Core.Templates
                 return _templateFileNames["WorkItem"];
             }
             return templateFile;
+        }
+
+        internal string GenerateFullFileName(string templateName)
+        {
+            if (!Path.IsPathRooted(templateName))
+            {
+                return Path.Combine(_templateFolder, templateName);
+            }
+            return templateName;
         }
 
         /// <summary>
@@ -76,6 +94,17 @@ namespace WordExporter.Core.Templates
 
             String tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".docx");
             File.Copy(baseFile, tempFile);
+            return tempFile;
+        }
+
+        public String CopyFileInTempDirectory(String localFileName)
+        {
+            String fileName = Path.Combine(_templateFolder, localFileName);
+            if (!File.Exists(fileName))
+                throw new ArgumentException($"File {nameof(fileName)} does not exists.", nameof(fileName));
+
+            var tempFile = Path.GetTempPath() + Guid.NewGuid().ToString() + Path.GetExtension(fileName);
+            File.Copy(fileName, tempFile);
             return tempFile;
         }
     }

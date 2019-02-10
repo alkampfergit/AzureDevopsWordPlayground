@@ -50,9 +50,15 @@ namespace WordExporter.Support
 
         [Option(
             "templateName",
-            Required = true,
-            HelpText = "Name of the template folder that contains word templates to be found.")]
+            Required = false,
+            HelpText = "Specify the name of the template, the template should be a subfolder of the parent template folder.")]
         public String TemplateName { get; set; }
+
+        [Option(
+            "templateFolder",
+            Required = false,
+            HelpText = "Name of the folder that contains template to use, if this parameter is present we assume that the folder contain a valid structure.txt file")]
+        public String TemplateFolder { get; set; }
 
         internal string GetAccessToken()
         {

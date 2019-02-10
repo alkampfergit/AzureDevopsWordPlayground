@@ -101,6 +101,14 @@ namespace WordExporter.Core.WordManipulation
 
         #region Manipulation of the word document to create data
 
+        /// <summary>
+        /// Insert a simple work item, it will use all the fields from work item
+        /// and perform substitution, then append the new work item to the current
+        /// document.
+        /// </summary>
+        /// <param name="workItem"></param>
+        /// <param name="workItemTemplateFile"></param>
+        /// <param name="insertPageBreak"></param>
         public void InsertWorkItem(WorkItem workItem, String workItemTemplateFile, Boolean insertPageBreak = true)
         {
             //ok we need to open the template, give it a new name, perform substitution and finally append to the existing document
@@ -115,6 +123,12 @@ namespace WordExporter.Core.WordManipulation
             File.Delete(tempFile);
         }
 
+        /// <summary>
+        /// Simply create a dictionary of substitution values from all the fields
+        /// of the work item.
+        /// </summary>
+        /// <param name="workItem"></param>
+        /// <returns></returns>
         private Dictionary<String, Object> CreateDictionaryFromWorkItem(WorkItem workItem)
         {
             var retValue = new Dictionary<String, Object>();

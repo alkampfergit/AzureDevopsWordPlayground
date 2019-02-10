@@ -36,18 +36,53 @@ namespace WordExporter
 
             ConnectionManager connection = new ConnectionManager(options.ServiceAddress, options.GetAccessToken());
 
-            DumpAllTeamProjects(connection);
+            //DumpAllTeamProjects(connection);
 
+            if (String.IsNullOrEmpty(options.TemplateFolder))
+            {
+                PerformStandardIterationExport(connection);
+            }
+            else
+            {
+                PerformTemplateExport(connection);
+            }
+
+            if (Environment.UserInteractive)
+            {
+                Console.WriteLine("Execution completed, press a key to continue");
+                Console.ReadKey();
+            }
+        }
+
+        private static void PerformTemplateExport(ConnectionManager connection)
+        {
+            var wordFolderManager = new WordTemplateFolderManager(options.TemplateFolder);
+            var executor = new TemplateExecutor(wordFolderManager);
+
+            //now we need to ask user parameter value
+            Dictionary<string, Object> parameters = new Dictionary<string, object>();
+            foreach (var parameterName in wordFolderManager.TemplateDefinition.Parameters.ParameterNames)
+            {
+                Console.Write($"Parameter {parameterName}:");
+                parameters[parameterName] = Console.ReadLine();
+            }
+
+            var tempFileName = Path.GetTempPath() + Guid.NewGuid().ToString() + ".docx";
+            executor.GenerateWordFile(tempFileName, connection, options.TeamProject, parameters);
+            System.Diagnostics.Process.Start(tempFileName);
+        }
+
+        private static void PerformStandardIterationExport(ConnectionManager connection)
+        {
             WorkItemManger workItemManger = new WorkItemManger(connection);
-            workItemManger.SetTeamProject("zoalord insurance");
+            workItemManger.SetTeamProject(options.TeamProject);
             var workItems = workItemManger.LoadAllWorkItemForAreaAndIteration(
                 options.AreaPath,
                 options.IterationPath);
 
             var fileName = Path.GetTempFileName() + ".docx";
             var templateManager = new TemplateManager("Templates");
-            var template = templateManager.GetWordTemplate(options.TemplateName);
-
+            var template = templateManager.GetWordDefinitionTemplate(options.TemplateName);
             using (WordManipulator manipulator = new WordManipulator(fileName, true))
             {
                 AddTableContent(manipulator, workItems, template);
@@ -58,18 +93,12 @@ namespace WordExporter
             }
 
             System.Diagnostics.Process.Start(fileName);
-
-            if (Environment.UserInteractive)
-            {
-                Console.WriteLine("Execution completed, press a key to continue");
-                Console.ReadKey();
-            }
         }
 
         private static void AddTableContent(
             WordManipulator manipulator,
             List<WorkItem> workItems,
-            WordTemplate template)
+            WordTemplateFolderManager template)
         {
             string tableFileName = template.GetTable("A", true);
             using (var tableManipulator = new WordManipulator(tableFileName, false))

@@ -1,0 +1,8 @@
+﻿[[parameters]]
+	param1
+	param2
+[[static]]
+    filename: header.docx
+[[query]]
+    query: "SELECT * FROM WorkItems "
+    template/Product Backlog Item: pbi.docx

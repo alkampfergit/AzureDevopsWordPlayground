@@ -30,11 +30,23 @@ namespace WordExporter.Core.WorkItems
         /// <returns></returns>
         public List<WorkItem> LoadAllWorkItemForAreaAndIteration(string areaPath, string iterationPath)
         {
+            return ExecuteQuery($"SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'");
+        }
+
+        public List<WorkItem> ExecuteQuery(string wiqlQuery)
+        {
             StringBuilder query = new StringBuilder();
-            query.AppendLine($"SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'");
+            query.AppendLine(wiqlQuery);
             if (!String.IsNullOrEmpty(_teamProjectName))
             {
-                query.AppendLine($"AND [System.TeamProject] = '{_teamProjectName}'");
+                if (wiqlQuery.IndexOf(" where ", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    query.AppendLine($" AND [System.TeamProject] = '{_teamProjectName}'");
+                }
+                else
+                {
+                    query.AppendLine($" WHERE [System.TeamProject] = '{_teamProjectName}'");
+                }
             }
 
             return _connection.WorkItemStore.Query(query.ToString())

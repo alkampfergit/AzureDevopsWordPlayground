@@ -14,7 +14,7 @@ namespace WordExporter.Core.Templates
             if (baseTemplateFolder == null)
                 throw new ArgumentNullException(nameof(baseTemplateFolder));
 
-            _templates = new Dictionary<string, WordTemplate>(StringComparer.OrdinalIgnoreCase);
+            _templates = new Dictionary<string, WordTemplateFolderManager>(StringComparer.OrdinalIgnoreCase);
 
             var dinfo = new DirectoryInfo(baseTemplateFolder);
             if (!dinfo.Exists)
@@ -25,11 +25,11 @@ namespace WordExporter.Core.Templates
         }
 
         private readonly String _baseTemplateFolder;
-        private readonly Dictionary<String, WordTemplate> _templates;
+        private readonly Dictionary<String, WordTemplateFolderManager> _templates;
 
         public Int32 TemplateCount => _templates.Count;
 
-        public WordTemplate GetWordTemplate(String templateName)
+        public WordTemplateFolderManager GetWordDefinitionTemplate(String templateName)
         {
             if (!_templates.TryGetValue(templateName, out var template))
             {
@@ -53,7 +53,7 @@ namespace WordExporter.Core.Templates
             var dinfo = new DirectoryInfo(_baseTemplateFolder);
             foreach (var directory in dinfo.EnumerateDirectories())
             {
-                _templates.Add(directory.Name, new WordTemplate(directory.FullName));
+                _templates.Add(directory.Name, new WordTemplateFolderManager(directory.FullName));
             }
         }
     }
