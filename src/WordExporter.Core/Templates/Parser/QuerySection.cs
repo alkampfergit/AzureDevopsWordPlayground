@@ -30,9 +30,18 @@ namespace WordExporter.Core.Templates.Parser
             {
                 SpecificTemplates[templateKeys.realKey] = templateKeys.value;
             }
+            TableTemplate = keyValuePairList
+                .SingleOrDefault(k => k.Key.Equals("tableTemplate", StringComparison.OrdinalIgnoreCase))
+                ?.Value;
         }
 
         public String Query { get; private set; }
+
+        /// <summary>
+        /// If this property is set we have a special export where we create a table of 
+        /// work items.
+        /// </summary>
+        public String TableTemplate { get; set; }
 
         private Dictionary<String, String> SpecificTemplates = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -60,20 +69,33 @@ namespace WordExporter.Core.Templates.Parser
             workItemManger.SetTeamProject(teamProjectName);
             var workItems = workItemManger.ExecuteQuery(Query);
 
-            foreach (var workItem in workItems)
+            if (String.IsNullOrEmpty(TableTemplate))
             {
-                if (!SpecificTemplates.TryGetValue(workItem.Type.Name, out var templateName))
+                foreach (var workItem in workItems)
                 {
-                    templateName = wordTemplateFolderManager.GetTemplateFor(workItem.Type.Name);
-                }
-                else
-                {
-                    templateName = wordTemplateFolderManager.GenerateFullFileName(templateName);
-                }
+                    if (!SpecificTemplates.TryGetValue(workItem.Type.Name, out var templateName))
+                    {
+                        templateName = wordTemplateFolderManager.GetTemplateFor(workItem.Type.Name);
+                    }
+                    else
+                    {
+                        templateName = wordTemplateFolderManager.GenerateFullFileName(templateName);
+                    }
 
-                manipulator.InsertWorkItem(workItem, templateName, true);
+                    manipulator.InsertWorkItem(workItem, templateName, true);
+                }
             }
-
+            else
+            {
+                //We have a table template, we want to export work item as a list
+                var tableFile = wordTemplateFolderManager.GenerateFullFileName(TableTemplate);
+                var tempFile = wordTemplateFolderManager.CopyFileInTempDirectory(tableFile);
+                using (var tableManipulator = new WordManipulator(tempFile, false))
+                {
+                    tableManipulator.FillTableWithWorkItems(true, workItems);
+                }
+                manipulator.AppendOtherWordFile(tempFile);
+            }
             base.Assemble(manipulator, parameters, connectionManager, wordTemplateFolderManager, teamProjectName);
         }
     }

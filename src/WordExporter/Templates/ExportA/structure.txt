@@ -6,3 +6,6 @@
 [[query]]
     query: "SELECT * FROM WorkItems "
     template/Product Backlog Item: pbi.docx
+[[query]]
+    query: "SELECT * FROM WorkItems "
+    tableTemplate: tableWorkItem.docx

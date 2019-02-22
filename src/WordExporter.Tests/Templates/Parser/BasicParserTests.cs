@@ -52,8 +52,8 @@ namespace WordExporter.Tests.Templates.Parser
             TemplateDefinition def = sut.ParseTemplateDefinition(
 @"[[query]]
     query: ""SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'""
-    template/Product Backlog Item = pbix.docx
-    template/Bug = bugaa.docx
+    template/Product Backlog Item: pbix.docx
+    template/Bug: bugaa.docx
 ");
             var querySection = def.AllSections.Single() as QuerySection;
             Assert.That(querySection.Query, Is.EqualTo("SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'"));
@@ -84,6 +84,19 @@ namespace WordExporter.Tests.Templates.Parser
     paramb
 ");
             Assert.That(def.Parameters.ParameterNames, Is.EquivalentTo(new[] { "parama", "paramb" }));
+        }
+
+        [Test]
+        public void Valid_query_section_with_table_file()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[query]]
+    query: ""SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'""
+    tableTemplate: table.docx
+");
+            var querySection = def.AllSections.Single() as QuerySection;
+            Assert.That(querySection.TableTemplate, Is.EqualTo("table.docx"));
         }
     }
 }

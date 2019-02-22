@@ -131,8 +131,9 @@ namespace WordExporter.Core.WordManipulation
         /// <returns></returns>
         private Dictionary<String, Object> CreateDictionaryFromWorkItem(WorkItem workItem)
         {
-            var retValue = new Dictionary<String, Object>();
+            var retValue = new Dictionary<String, Object>(StringComparer.OrdinalIgnoreCase);
             retValue["title"] = workItem.Title;
+            retValue["id"] = workItem.Id;
             //Some help to avoid forcing the user to use System.AssignedTo etc for most commonly used fields.
             retValue["description"] = new HtmlSubstitution(workItem.EmbedHtmlContent(workItem.Description));
             retValue["assignedto"] = workItem.Fields["System.AssignedTo"].Value?.ToString() ?? String.Empty;
@@ -654,6 +655,68 @@ namespace WordExporter.Core.WordManipulation
             }
             return this;
         }
+
+        /// <summary>
+        /// We have a table with an header (optional) and the first row, where in each cell we 
+        /// specify the field of the work item we want to include in the cell.
+        /// </summary>
+        /// <param name="skipHeader"></param>
+        /// <param name="workItems"></param>
+        /// <returns></returns>
+        public WordManipulator FillTableWithWorkItems(
+            Boolean skipHeader,
+            IEnumerable<WorkItem> workItems)
+        {
+            var table = _document.MainDocumentPart.Document.Body
+                .Descendants<Table>()
+                .FirstOrDefault();
+            if (table != null)
+            {
+                //remove every rows but first save the first two rows for the formatting.
+                var rows = table.Elements<TableRow>().ToList();
+                Int32 skip = skipHeader ? 1 : 0;
+                var rowWithField = rows.Skip(skip).First();
+                List<List<String>> workItemCellsData = new List<List<string>>();
+                List<String> cellFields = new List<string>();
+                var cells = rowWithField.Descendants<TableCell>().ToList();
+                foreach (var dataCell in cells)
+                {
+                    //ok for each cell we need to grab the field name
+                    //in this first version we support only a field for each column
+                    var dataCellText = dataCell.InnerText;
+                    var match = Regex.Match(dataCellText, @"\{\{(?<name>.*?)\}\}");
+                    if (match.Success)
+                    {
+                        cellFields.Add(match.Groups["name"].Value);
+                    }
+                    else
+                    {
+                        cellFields.Add("");
+                    }
+                }
+                foreach (var workItem in workItems)
+                {
+                    List<String> row = new List<string>();
+                    var properties = this.CreateDictionaryFromWorkItem(workItem);
+                    foreach (var field in cellFields)
+                    {
+                        if (properties.TryGetValue(field, out var value))
+                        {
+                            row.Add(value as String);
+                        }
+                        else
+                        {
+                            row.Add(String.Empty);
+                        }
+                    }
+                    workItemCellsData.Add(row);
+                }
+
+                FillTable(true, workItemCellsData);
+            }
+            return this;
+        }
+
 
         #endregion
 
