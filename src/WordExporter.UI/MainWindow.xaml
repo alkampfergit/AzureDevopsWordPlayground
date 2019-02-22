@@ -6,14 +6,14 @@
         xmlns:local="clr-namespace:WordExporter.UI"
         mc:Ignorable="d"
         DataContext="{Binding Main, Source={StaticResource Locator}}"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow"  >
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="26"/>
             <RowDefinition Height="26"/>
             <RowDefinition Height="120" />
+            <RowDefinition Height="26" />
             <RowDefinition Height="*" />
-            <RowDefinition />
         </Grid.RowDefinitions>
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
@@ -69,11 +69,42 @@
         </Grid>
 
         <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="110"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="120"/>
+            </Grid.ColumnDefinitions>
+
+            <Label Grid.Column="0">Template folder</Label>
+            <TextBox Grid.Column="1" Text="{Binding TemplateFolder}"></TextBox>
+            <ComboBox Grid.Column="2" 
+                ItemsSource="{Binding Templates}" 
+                SelectedItem="{Binding SelectedTemplate}"></ComboBox>
+            <Button Grid.Column="3"  Command="{Binding Export}">Export</Button>
+        </Grid>
+
+        <Grid Grid.Row="4">
             <ListView Grid.Column="0" ItemsSource="{Binding SelectedQuery.Results}" >
                 <ListView.View>
                     <GridView>
+
+                        <GridViewColumn>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid HorizontalAlignment="Stretch">
+                                        <CheckBox  x:Name="chkAvg" IsChecked="{Binding Selected}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                            <Grid>
+                                <CheckBox x:Name="chkAvgSelectAll" Content="Sel" 
+                                          IsChecked="{Binding SelectedQuery.SelectAllSelected}"
+                                          ToolTip="Select All" Command="{Binding SelectedQuery.SelectAll}" />
+                            </Grid>
+                        </GridViewColumn>
                         <GridViewColumn Header="Id" Width="120" DisplayMemberBinding="{Binding Id}" />
-                        <GridViewColumn Header="Url" Width="120" DisplayMemberBinding="{Binding Url}" />
+                        <GridViewColumn Header="Title" Width="120" DisplayMemberBinding="{Binding Title}" />
                     </GridView>
                 </ListView.View>
             </ListView>

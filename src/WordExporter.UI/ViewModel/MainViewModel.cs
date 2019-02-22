@@ -11,10 +11,13 @@ using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using WordExporter.Core;
+using WordExporter.Core.Templates;
+using WordExporter.Core.WordManipulation;
 
 namespace WordExporter.UI.ViewModel
 {
@@ -46,9 +49,14 @@ namespace WordExporter.UI.ViewModel
                 // Code runs "for real"
             }
 
+            //TemplateFolder = Path.Combine(
+            //    Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory),
+            //    "Templates");
+
+            TemplateFolder = @"C:\develop\GitHub\AzureDevopsWordPlayground\src\WordExporter\Templates";
             Connect = new RelayCommand(ConnectMethod);
             GetQueries = new RelayCommand(GetQueriesMethod);
-
+            Export = new RelayCommand(ExportMethod);
             _address = "https://dev.azure.com/gianmariaricci";
         }
 
@@ -152,9 +160,78 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        private String _templateFolder;
+
+        public String TemplateFolder
+        {
+            get
+            {
+                return _templateFolder;
+            }
+            set
+            {
+                Set<String>(() => this.TemplateFolder, ref _templateFolder, value);
+                Templates.Clear();
+                if (Directory.Exists(value))
+                {
+                    TemplateManager = new TemplateManager(TemplateFolder);
+                    Templates.AddRange(TemplateManager.GetTemplateNames());
+                }
+                else
+                {
+                    TemplateManager = null;
+                }
+            }
+        }
+
+        private TemplateManager _templateManager;
+
+        public TemplateManager TemplateManager
+        {
+            get
+            {
+                return _templateManager;
+            }
+            set
+            {
+                Set<TemplateManager>(() => this.TemplateManager, ref _templateManager, value);
+            }
+        }
+
+        private ObservableCollection<String> _templates = new ObservableCollection<String>();
+
+        public ObservableCollection<String> Templates
+        {
+            get
+            {
+                return _templates;
+            }
+            set
+            {
+                _templates = value;
+                RaisePropertyChanged(nameof(Templates));
+            }
+        }
+
+        public String _selectedTemplate;
+
+        public String SelectedTemplate
+        {
+            get
+            {
+                return _selectedTemplate;
+            }
+            set
+            {
+                Set<String>(() => this.SelectedTemplate, ref _selectedTemplate, value);
+            }
+        }
+
         public ICommand Connect { get; private set; }
 
         public ICommand GetQueries { get; private set; }
+
+        public ICommand Export { get; private set; }
 
         private async void ConnectMethod()
         {
@@ -233,9 +310,35 @@ namespace WordExporter.UI.ViewModel
         public async void GetQueriesMethod()
         {
             WorkItemTrackingHttpClient witClient = ConnectionManager.Instance.GetClient<WorkItemTrackingHttpClient>();
-            var queries =await witClient.GetQueriesAsync(SelectedTeamProject.Name, depth: 2);
+            var queries =await witClient.GetQueriesAsync(SelectedTeamProject.Name, depth: 2, expand: QueryExpand.Wiql);
             Queries.Clear();
             await PopulateQueries(String.Empty, witClient, queries);
+        }
+
+        public void ExportMethod()
+        {
+            if (TemplateManager == null)
+                return;
+
+            if (String.IsNullOrEmpty(SelectedTemplate))
+                return;
+
+            var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
+            if (selected == null || selected.Count == 0)
+                return;
+
+            var template = TemplateManager.GetWordDefinitionTemplate(SelectedTemplate);
+            var fileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()) + ".docx";
+            using (WordManipulator manipulator = new WordManipulator(fileName, true))
+            {
+                foreach (var workItemResult in selected)
+                {
+                    var workItem = workItemResult.WorkItem;
+                    manipulator.InsertWorkItem(workItem, template.GetTemplateFor(workItem.Type.Name), true);
+                }
+            }
+
+            System.Diagnostics.Process.Start(fileName);
         }
 
         private async Task PopulateQueries(String actualPath, WorkItemTrackingHttpClient witClient, IEnumerable<QueryHierarchyItem> queries)
@@ -252,7 +355,7 @@ namespace WordExporter.UI.ViewModel
                     if (query.Children == null)
                     {
                         //need to requery the store to grab reference to the query.
-                        var queryReloaded = await witClient.GetQueryAsync(SelectedTeamProject.Id, query.Path, depth: 2);
+                        var queryReloaded = await witClient.GetQueryAsync(SelectedTeamProject.Id, query.Path, depth: 2, expand: QueryExpand.Wiql);
                         await PopulateQueries(newPath, witClient, queryReloaded.Children);
                     }
                     else

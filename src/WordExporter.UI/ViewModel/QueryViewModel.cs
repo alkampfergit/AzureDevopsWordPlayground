@@ -24,6 +24,7 @@ namespace WordExporter.UI.ViewModel
             Query = queryHierarchyItem;
             FullPath = (parentPath + '/' + queryHierarchyItem.Name).Trim('/');
             Execute = new RelayCommand(ExecuteMethod);
+            SelectAll = new RelayCommand(ExecuteSelectAll);
             _mainViewModel = mainViewModel;
         }
 
@@ -52,6 +53,20 @@ namespace WordExporter.UI.ViewModel
             set
             {
                 Set<String>(() => this.FullPath, ref _fullPath, value);
+            }
+        }
+
+        private Boolean _selectAllSelected;
+
+        public Boolean SelectAllSelected
+        {
+            get
+            {
+                return _selectAllSelected;
+            }
+            set
+            {
+                Set<Boolean>(() => this.SelectAllSelected, ref _selectAllSelected, value);
             }
         }
 
@@ -85,14 +100,28 @@ namespace WordExporter.UI.ViewModel
                 //    var qrvm = new QueryResultViewModel(wiReference);
                 //    Results.Add(qrvm);
                 //}
-
+                Results.Clear();
                 Dictionary<String, String> parameters = new Dictionary<String, String>();
                 parameters.Add("project", _mainViewModel.SelectedTeamProject.Name);
                 var queryResult = ConnectionManager.Instance.WorkItemStore.Query(_query.Wiql, parameters);
+                foreach (Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItem workItem in queryResult)
+                {
+                    Results.Add(new QueryResultViewModel(workItem));
+                }
             }
             else
             {
                 //TODO: Show some meaningful error to the caller.
+            }
+        }
+
+        public ICommand SelectAll { get; private set; }
+
+        private void ExecuteSelectAll()
+        {
+            foreach (var qrvi in Results)
+            {
+                qrvi.Selected = SelectAllSelected;
             }
         }
     }

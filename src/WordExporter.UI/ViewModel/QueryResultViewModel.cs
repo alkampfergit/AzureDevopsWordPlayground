@@ -10,18 +10,34 @@ namespace WordExporter.UI.ViewModel
 {
     public class QueryResultViewModel : ViewModelBase
     {
-        private readonly WorkItemReference wiReference;
+        private readonly Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItem _workItem;
 
-        public QueryResultViewModel(WorkItemReference wiReference)
+        public QueryResultViewModel(Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItem workItem)
         {
-            this.wiReference = wiReference;
-            Id = wiReference.Id;
-            Url = wiReference.Url;
+            this._workItem = workItem;
+            Id = _workItem.Id;
+            Title = _workItem.Title;
         }
 
-        private Int64 _id;
+        public Microsoft.TeamFoundation.WorkItemTracking.Client.WorkItem WorkItem => _workItem;
 
-        public Int64 Id
+        private Boolean _selected;
+
+        public Boolean Selected
+        {
+            get
+            {
+                return _selected;
+            }
+            set
+            {
+                Set<Boolean>(() => this.Selected, ref _selected, value);
+            }
+        }
+
+        private Int32 _id;
+
+        public Int32 Id
         {
             get
             {
@@ -29,21 +45,21 @@ namespace WordExporter.UI.ViewModel
             }
             set
             {
-                Set<Int64>(() => this.Id, ref _id, value);
+                Set<Int32>(() => this.Id, ref _id, value);
             }
         }
 
-        private String _url;
+        private String _title;
 
-        public String Url
+        public String Title
         {
             get
             {
-                return _url;
+                return _title;
             }
             set
             {
-                Set<String>(() => this.Url, ref _url, value);
+                Set<String>(() => this.Title, ref _title, value);
             }
         }
     }
