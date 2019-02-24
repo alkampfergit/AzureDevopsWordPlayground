@@ -40,9 +40,11 @@ namespace WordExporter.Tests.Templates.Parser
             var sut = new ConfigurationParser();
             TemplateDefinition def = sut.ParseTemplateDefinition(
 @"[[static]]
-    filename: bla.docx");
+    filename: bla.docx
+    pageBreak: true");
            var staticSection = def.AllSections.Single() as StaticWordSection;
             Assert.That(staticSection.FileName, Is.EqualTo("bla.docx"));
+            Assert.That(staticSection.PageBreak, Is.EqualTo(true));
         }
 
         [Test]

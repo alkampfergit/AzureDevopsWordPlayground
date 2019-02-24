@@ -14,13 +14,15 @@ namespace WordExporter.Core.Templates.Parser
     {
         private StaticWordSection(IEnumerable<KeyValue> keyValuePairList)
         {
-            var fileNameEntry = keyValuePairList.SingleOrDefault(_ => _.Key.Equals("filename", StringComparison.OrdinalIgnoreCase));
-            if (fileNameEntry == null)
+            FileName = keyValuePairList.GetStringValue("filename");
+            if (FileName == null)
                 throw new ArgumentException("Static word section needs a parameter called filename");
-            FileName = fileNameEntry.Value;
+            PageBreak = keyValuePairList.GetBooleanValue("PageBreak"); 
         }
 
         public String FileName { get; private set; }
+
+        public Boolean PageBreak { get; private set; }
 
         #region Syntax
 
@@ -44,7 +46,8 @@ namespace WordExporter.Core.Templates.Parser
             {
                 m.SubstituteTokens(parameters);
             }
-            manipulator.AppendOtherWordFile(fileName);
+            //Simply append other file honoring the page break.
+            manipulator.AppendOtherWordFile(fileName, PageBreak);
             File.Delete(FileName);
             base.Assemble(manipulator, parameters, connectionManager, wordTemplateFolderManager, teamProjectName);
         }

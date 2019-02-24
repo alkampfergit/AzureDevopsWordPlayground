@@ -288,6 +288,7 @@
     <Compile Include="Support\VssClientCredentialClientStorage.cs" />
     <Compile Include="Support\WorkItemExtension.cs" />
     <Compile Include="Templates\Parser\ConfigurationParser.cs" />
+    <Compile Include="Templates\Parser\Helpers.cs" />
     <Compile Include="Templates\Parser\ParameterSection.cs" />
     <Compile Include="Templates\Parser\QuerySection.cs" />
     <Compile Include="Templates\Parser\Section.cs" />

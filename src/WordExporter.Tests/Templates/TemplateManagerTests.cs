@@ -25,7 +25,7 @@ namespace WordExporter.Tests.Templates
         public void Verify_correct_number_of_templates_is_scanned()
         {
             var sut = new TemplateManager(GetTemplateFolder("1"));
-            Assert.That(sut.TemplateCount, Is.EqualTo(3));
+            Assert.That(sut.TemplateCount, Is.EqualTo(4));
         }
 
         [Test]
@@ -39,7 +39,7 @@ namespace WordExporter.Tests.Templates
         public void Verify_enumeration_of_templates()
         {
             var sut = new TemplateManager(GetTemplateFolder("1"));
-            Assert.That(sut.GetTemplateNames(), Is.EquivalentTo(new[] { "TemplateA", "TemplateB", "TemplateStructure" }));
+            Assert.That(sut.GetTemplateNames(), Is.EquivalentTo(new[] { "TemplateA", "TemplateB", "TemplateStructure", "TemplateNumbering" }));
         }
 
         [Test]
