@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using DocumentFormat.OpenXml.Wordprocessing;
+using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -45,6 +46,62 @@ namespace WordExporter.Tests.WordManipulation
                 wm.AppendOtherWordFile(AppendTitle(header2, "Subtitle 1.2"), false);
                 wm.AppendOtherWordFile(AppendTitle(header1, "Title 2"), false);
                 wm.AppendOtherWordFile(AppendTitle(header2, "Subtitle 2.1"), false);
+            }
+        }
+
+        [Test]
+        public void Basic_replace()
+        {
+            var baseFile = CopyTestFileIntoTempDirectory("simple.docx");
+
+            using (var wm = new WordManipulator(baseFile, false))
+            {
+                wm.SubstituteTokens(new Dictionary<string, object>()
+                {
+                    ["text"] = "this is the content of text",
+                    ["example"] = "This is the content of example"
+                });
+            }
+
+            using (var wm = new WordManipulator(baseFile, false))
+            {
+                var paragraphs = wm.DocumentBody.Descendants<Paragraph>();
+                Assert.That(paragraphs.Any(_ => _.InnerText.Contains("this is the content of text")));
+                Assert.That(paragraphs.Any(_ => _.InnerText.Contains("This is the content of example")));
+            }
+
+            //Open(baseFile);
+        }
+
+        [Test]
+        public void TestCompositeTable()
+        {
+            var baseFile = CopyTestFileIntoTempDirectory("tableworkitem.docx");
+
+            using (var wm = new WordManipulator(baseFile, false))
+            {
+                wm.FillCompositeTable(true, new Dictionary<String, Object>[]
+                {
+                    new Dictionary<String, Object> {
+                        ["Id"]  = "1",
+                        ["title"] = "Title 1",
+                        ["assignedto"] = "Gian Maria",
+                        ["description"] = "Description - 1 this can be really long"
+                    },
+                     new Dictionary<String, Object> {
+                        ["Id"]  = "2",
+                        ["title"] = "Title 2",
+                        ["assignedto"] = "Other member of the team",
+                        ["description"] = "Description - 2 this can be really long"
+                    }
+                });
+            }
+
+            using (var wm = new WordManipulator(baseFile, false))
+            {
+                var table = wm.DocumentBody.Descendants<Table>().First();
+                var paragraphs = table.Descendants<Paragraph>();
+                Assert.That(paragraphs.Any(_ => _.InnerText.Contains("Title 2")));
             }
 
             //Open(baseFile);

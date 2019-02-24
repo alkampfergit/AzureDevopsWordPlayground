@@ -47,6 +47,9 @@ namespace WordExporter.Core.WordManipulation
         private readonly MainDocumentPart _mainDocumentPart;
         private readonly Body _body;
 
+        public WordprocessingDocument Document => _document;
+        public Body DocumentBody => _body;
+
         #region IDisposable Support
 
         private bool disposedValue = false; // To detect redundant calls
@@ -112,7 +115,7 @@ namespace WordExporter.Core.WordManipulation
         public void InsertWorkItem(WorkItem workItem, String workItemTemplateFile, Boolean insertPageBreak = true)
         {
             //ok we need to open the template, give it a new name, perform substitution and finally append to the existing document
-            var tempFile = Path.Combine( Path.GetTempPath(), Guid.NewGuid().ToString() + ".docx");
+            var tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".docx");
             File.Copy(workItemTemplateFile, tempFile, true);
             using (WordManipulator m = new WordManipulator(tempFile, false))
             {
@@ -651,6 +654,49 @@ namespace WordExporter.Core.WordManipulation
                     }
                     table.Append(row);
                     isFirstRow = false;
+                }
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// A composite table is a table where we have usually an header, then a first row that have
+        /// cells populated with substitution value. We need to replicate the row with the substitution
+        /// for each cell value.
+        /// </summary>
+        /// <param name="skipHeader"></param>
+        /// <param name="data">A series of dictionaries, each dictionary contains
+        /// substitution values for an entire row.</param>
+        /// <returns></returns>
+        public WordManipulator FillCompositeTable(
+          Boolean skipHeader,
+          IEnumerable<Dictionary<String, Object>> data)
+        {
+            var table = _document.MainDocumentPart.Document.Body
+                .Descendants<Table>()
+                .FirstOrDefault();
+            if (table != null)
+            {
+                //remove every rows but keep formatting row.
+                var rows = table.Elements<TableRow>().ToList();
+                Int32 skip = skipHeader ? 1 : 0;
+
+                TableRow templateRow = rows.Skip(skip).FirstOrDefault();
+                table.RemoveChild(templateRow);
+
+                if (templateRow != null)
+                {
+                    foreach (var dataRow in data)
+                    {
+                        var row = (TableRow)templateRow.CloneNode(true);
+
+                        //Grab all the run style of first row to copy on all subsequence cell.
+                        var paragraph = row.Descendants<Paragraph>();
+                        var realReplaceList = dataRow.ToDictionary(_ => CreateSubstitutionTokenFromName(_.Key), _ => _.Value);
+
+                        SubstituteInParagraph(realReplaceList, paragraph);
+                        table.Append(row);
+                    }
                 }
             }
             return this;
