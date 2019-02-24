@@ -22,5 +22,14 @@ namespace WordExporter.Core.Templates.Parser
             var entry = keyValues.FirstOrDefault(k => k.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
             return entry?.Value;
         }
+
+        public static Int32 GetIntValue(this IEnumerable<KeyValue> keyValues, String key, Int32 defaultValue)
+        {
+            var entry = keyValues.FirstOrDefault(k => k.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+            if (entry == null || !Int32.TryParse(entry.Value, out var value))
+                return defaultValue;
+
+            return value;
+        }
     }
 }

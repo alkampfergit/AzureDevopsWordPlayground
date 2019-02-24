@@ -30,9 +30,8 @@ namespace WordExporter.Core.Templates.Parser
             {
                 SpecificTemplates[templateKeys.realKey] = templateKeys.value;
             }
-            TableTemplate = keyValuePairList
-                .SingleOrDefault(k => k.Key.Equals("tableTemplate", StringComparison.OrdinalIgnoreCase))
-                ?.Value;
+            TableTemplate = keyValuePairList.GetStringValue("tableTemplate");
+           Limit = keyValuePairList.GetIntValue("limit", Int32.MaxValue);
         }
 
         public String Query { get; private set; }
@@ -42,6 +41,7 @@ namespace WordExporter.Core.Templates.Parser
         /// work items.
         /// </summary>
         public String TableTemplate { get; set; }
+        public Int32 Limit { get; set; }
 
         private Dictionary<String, String> SpecificTemplates = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -67,7 +67,8 @@ namespace WordExporter.Core.Templates.Parser
         {
             WorkItemManger workItemManger = new WorkItemManger(connectionManager);
             workItemManger.SetTeamProject(teamProjectName);
-            var workItems = workItemManger.ExecuteQuery(Query);
+            var workItems = workItemManger.ExecuteQuery(Query)
+                .Take(Limit);
 
             if (String.IsNullOrEmpty(TableTemplate))
             {
@@ -92,7 +93,7 @@ namespace WordExporter.Core.Templates.Parser
                 var tempFile = wordTemplateFolderManager.CopyFileInTempDirectory(tableFile);
                 using (var tableManipulator = new WordManipulator(tempFile, false))
                 {
-                    tableManipulator.FillTableWithWorkItems(true, workItems);
+                    tableManipulator.FillTableWithCompositeWorkItems(true, workItems);
                 }
                 manipulator.AppendOtherWordFile(tempFile);
             }

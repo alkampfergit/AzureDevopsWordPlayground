@@ -142,9 +142,17 @@ namespace WordExporter.Core.WordManipulation
             retValue["assignedto"] = workItem.Fields["System.AssignedTo"].Value?.ToString() ?? String.Empty;
             retValue["createdby"] = workItem.Fields["System.CreatedBy"].Value?.ToString() ?? String.Empty;
 
+            HashSet<String> specialFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "description",
+            };
+
             //All the fields will be set in raw format.
             foreach (Field field in workItem.Fields)
             {
+                if (specialFields.Contains(field.Name))
+                    continue; //This is a special field, ignore.
+
                 retValue[field.Name] = field.Value?.ToString() ?? String.Empty;
             }
             return retValue;
@@ -709,7 +717,7 @@ namespace WordExporter.Core.WordManipulation
         /// <param name="skipHeader"></param>
         /// <param name="workItems"></param>
         /// <returns></returns>
-        public WordManipulator FillTableWithWorkItems(
+        public WordManipulator FillTableWithSingleFieldWorkItems(
             Boolean skipHeader,
             IEnumerable<WorkItem> workItems)
         {
@@ -763,6 +771,27 @@ namespace WordExporter.Core.WordManipulation
             return this;
         }
 
+        /// <summary>
+        /// This is similar to <see cref="FillTableWithSingleFieldWorkItems(bool, IEnumerable{WorkItem})"/>
+        /// but with this version the routine will perform a complete substitution in each cell
+        /// so you can have multiple value in cells. This is more time consuming that
+        /// <see cref="FillTableWithSingleFieldWorkItems(bool, IEnumerable{WorkItem})"/>
+        /// </summary>
+        /// <param name="skipHeader"></param>
+        /// <param name="workItems"></param>
+        /// <returns></returns>
+        public WordManipulator FillTableWithCompositeWorkItems(
+            Boolean skipHeader,
+            IEnumerable<WorkItem> workItems)
+        {
+            List<Dictionary<String, Object>> workItemCellsData = new List<Dictionary<String, Object>>();
+            foreach (var workItem in workItems)
+            {
+                var parameters = CreateDictionaryFromWorkItem(workItem);
+                workItemCellsData.Add(parameters);
+            }
+            return FillCompositeTable(skipHeader, workItemCellsData);
+        }
 
         #endregion
 

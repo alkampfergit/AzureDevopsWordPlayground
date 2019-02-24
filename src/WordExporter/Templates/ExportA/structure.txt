@@ -6,6 +6,8 @@
 [[query]]
     query: "SELECT * FROM WorkItems "
     template/Product Backlog Item: pbi.docx
+	limit: 2
 [[query]]
     query: "SELECT * FROM WorkItems "
     tableTemplate: tableWorkItem.docx
+	limit: 2

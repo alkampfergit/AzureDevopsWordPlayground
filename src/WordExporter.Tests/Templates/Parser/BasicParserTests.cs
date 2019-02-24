@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+using System;
 using System.Linq;
 using WordExporter.Core.Templates;
 using WordExporter.Core.Templates.Parser;
@@ -70,10 +71,24 @@ namespace WordExporter.Tests.Templates.Parser
     query: ""SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'""
     template/Product Backlog Item: pbix.docx
     template/Bug: bugaa.docx
+    limit: 1
 ");
             var querySection = def.AllSections.Single() as QuerySection;
             Assert.That(querySection.GetTemplateForWorkItem("Product Backlog Item"), Is.EqualTo("pbix.docx"));
             Assert.That(querySection.GetTemplateForWorkItem("Task"), Is.EqualTo(null));
+            Assert.That(querySection.Limit, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Query_section_without_limit_default_to_max_value()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[query]]
+    query: ""SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'""
+");
+            var querySection = def.AllSections.Single() as QuerySection;
+            Assert.That(querySection.Limit, Is.EqualTo(Int32.MaxValue));
         }
 
         [Test]
