@@ -322,8 +322,8 @@ namespace WordExporter.Core.WordManipulation
 
                             if (contextRun is AltChunk)
                             {
-                                _body.InsertAfter(contextRun, paragraph);
-                                _body.RemoveChild(paragraph);
+                                paragraph.Parent.ReplaceChild(contextRun, paragraph);
+                                //_body.RemoveChild(paragraph);
                                 break; //no more replace in this paragraph, html will replace everything
                             }
                             else
