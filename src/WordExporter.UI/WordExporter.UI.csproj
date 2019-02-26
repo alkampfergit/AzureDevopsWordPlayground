@@ -236,9 +236,12 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Support\InvertBoolConverter.cs" />
+    <Compile Include="Support\ValueConverterGroup.cs" />
     <Compile Include="ViewModel\MainViewModel.cs" />
     <Compile Include="ViewModel\QueryResultViewModel.cs" />
     <Compile Include="ViewModel\QueryViewModel.cs" />
+    <Compile Include="ViewModel\SubModels\TemplateInfo.cs" />
     <Compile Include="ViewModel\ViewModelLocator.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -280,9 +283,7 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="ViewModel\SubModels\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\WordExporter.Core\WordExporter.Core.csproj">
       <Project>{ABB29D4F-6ACE-481B-AAA8-C0F5BFF0DBA8}</Project>

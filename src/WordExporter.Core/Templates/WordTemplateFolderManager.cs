@@ -37,6 +37,8 @@ namespace WordExporter.Core.Templates
 
         public TemplateDefinition TemplateDefinition { get; private set; }
 
+        public Boolean HasTemplateDefinition => TemplateDefinition != null;
+
         private void ScanFolder()
         {
             var files = Directory.EnumerateFiles(_templateFolder, "*.docx");

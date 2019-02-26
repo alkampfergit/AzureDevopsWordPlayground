@@ -4,15 +4,24 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WordExporter.UI"
+        xmlns:support="clr-namespace:WordExporter.UI.Support"
         mc:Ignorable="d"
         DataContext="{Binding Main, Source={StaticResource Locator}}"
         Title="MainWindow"  >
+    
+    <Window.Resources>
+        <support:ValueConverterGroup x:Key="InvertAndVisibilitate">
+            <support:InvertBoolConverter/>
+            <BooleanToVisibilityConverter/>
+        </support:ValueConverterGroup>
+    </Window.Resources>
+    
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="26"/>
             <RowDefinition Height="26"/>
-            <RowDefinition Height="120" />
             <RowDefinition Height="26" />
+            <RowDefinition Height="120" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid Grid.Row="0">
@@ -52,7 +61,8 @@
             <Label Grid.Column="3" Content="{Binding Status}"></Label>
         </Grid>
 
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3" 
+              Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource InvertAndVisibilitate}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="100"/>
@@ -68,7 +78,7 @@
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="110"/>
                 <ColumnDefinition Width="*"/>
@@ -80,11 +90,13 @@
             <TextBox Grid.Column="1" Text="{Binding TemplateFolder}"></TextBox>
             <ComboBox Grid.Column="2" 
                 ItemsSource="{Binding Templates}" 
+                DisplayMemberPath="TemplateName"
                 SelectedItem="{Binding SelectedTemplate}"></ComboBox>
             <Button Grid.Column="3"  Command="{Binding Export}">Export</Button>
         </Grid>
 
-        <Grid Grid.Row="4">
+        <Grid Grid.Row="4"
+              Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource InvertAndVisibilitate}}">
             <ListView Grid.Column="0" ItemsSource="{Binding SelectedQuery.Results}" >
                 <ListView.View>
                     <GridView>

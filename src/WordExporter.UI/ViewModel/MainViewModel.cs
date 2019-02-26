@@ -18,6 +18,7 @@ using System.Windows.Input;
 using WordExporter.Core;
 using WordExporter.Core.Templates;
 using WordExporter.Core.WordManipulation;
+using WordExporter.UI.ViewModel.SubModels;
 
 namespace WordExporter.UI.ViewModel
 {
@@ -175,7 +176,12 @@ namespace WordExporter.UI.ViewModel
                 if (Directory.Exists(value))
                 {
                     TemplateManager = new TemplateManager(TemplateFolder);
-                    Templates.AddRange(TemplateManager.GetTemplateNames());
+                    foreach (var template in TemplateManager.GetTemplateNames())
+                    {
+                        var wordTemplate = TemplateManager.GetWordDefinitionTemplate(template);
+                        var info = new TemplateInfo(template, wordTemplate);
+                        Templates.Add(info);
+                    }
                 }
                 else
                 {
@@ -198,9 +204,9 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
-        private ObservableCollection<String> _templates = new ObservableCollection<String>();
+        private ObservableCollection<TemplateInfo> _templates = new ObservableCollection<TemplateInfo>();
 
-        public ObservableCollection<String> Templates
+        public ObservableCollection<TemplateInfo> Templates
         {
             get
             {
@@ -213,9 +219,9 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
-        public String _selectedTemplate;
+        public TemplateInfo _selectedTemplate;
 
-        public String SelectedTemplate
+        public TemplateInfo SelectedTemplate
         {
             get
             {
@@ -223,7 +229,7 @@ namespace WordExporter.UI.ViewModel
             }
             set
             {
-                Set<String>(() => this.SelectedTemplate, ref _selectedTemplate, value);
+                Set<TemplateInfo>(() => this.SelectedTemplate, ref _selectedTemplate, value);
             }
         }
 
@@ -320,14 +326,14 @@ namespace WordExporter.UI.ViewModel
             if (TemplateManager == null)
                 return;
 
-            if (String.IsNullOrEmpty(SelectedTemplate))
+            if (SelectedTemplate == null)
                 return;
 
             var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
             if (selected == null || selected.Count == 0)
                 return;
 
-            var template = TemplateManager.GetWordDefinitionTemplate(SelectedTemplate);
+            var template = SelectedTemplate.WordTemplateFolderManager;
             var fileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()) + ".docx";
             using (WordManipulator manipulator = new WordManipulator(fileName, true))
             {
