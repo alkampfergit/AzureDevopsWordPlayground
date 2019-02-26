@@ -35,6 +35,17 @@ section");
         }
 
         [Test]
+        public void Can_have_more_than_value_with_Single_key()
+        {
+            var keyValues = ConfigurationParser.KeyValueList.Parse("key: value\nkey: value2").ToArray();
+            Assert.That(keyValues.Length, Is.EqualTo(2));
+            Assert.That(keyValues[0].Key, Is.EqualTo("key"));
+            Assert.That(keyValues[0].Value, Is.EqualTo("value"));
+            Assert.That(keyValues[1].Key, Is.EqualTo("key"));
+            Assert.That(keyValues[1].Value, Is.EqualTo("value2"));
+        }
+
+        [Test]
         public void Basic_Multiple_KeyValue()
         {
             var keyValues = ConfigurationParser.KeyValueList.Parse("key: value\nkey2: value2").ToArray();
@@ -74,6 +85,37 @@ value3""");
         }
 
         [Test]
+        public void MultiLine_key_value_query()
+        {
+            var keyValue = ConfigurationParser.MultiLineKeyValue.Parse(
+      @"query: ""SELECT
+        * 
+        FROM workitems
+        WHERE
+            [System.TeamProject] = @project
+            AND [System.WorkItemType] = 'Product Backlog Item'
+            AND [System.IterationPath] = '{iterationPath}'""");
+            Assert.That(keyValue.Key, Is.EqualTo("query"));
+            Assert.That(keyValue.Value.Contains("[System.TeamProject] = @project"));
+        }
+
+        [Test]
+        public void MultiLine_key_value_query_plus_parameter()
+        {
+            var keyValue = ConfigurationParser.MultiLineKeyValue.Parse(
+      @"query: ""SELECT
+        * 
+        FROM workitems
+        WHERE
+            [System.TeamProject] = @project
+            AND [System.WorkItemType] = 'Product Backlog Item'
+            AND [System.IterationPath] = '{iterationPath}'""
+        queryParameter: test");
+            Assert.That(keyValue.Key, Is.EqualTo("query"));
+            Assert.That(keyValue.Value.Contains("[System.TeamProject] = @project"));
+        }
+
+        [Test]
         public void MultiLine_key_value_can_contain_square_bracket()
         {
             var keyValue = ConfigurationParser.MultiLineKeyValue.Parse(@"key: ""value
@@ -91,6 +133,17 @@ value:[with]:semicolon
 :value3""");
             Assert.That(keyValue.Key, Is.EqualTo("key"));
             Assert.That(keyValue.Value, Is.EqualTo("value\r\nvalue:[with]:semicolon\r\n:value3"));
+        }
+
+        [Test]
+        public void Single_parameter_set()
+        {
+            var parameterList = ConfigurationParser.ParameterSetList.Parse(@"param1=a|param2=b").ToArray();
+            Assert.That(parameterList.Length, Is.EqualTo(2));
+            Assert.That(parameterList[0].Key, Is.EqualTo("param1"));
+            Assert.That(parameterList[0].Value, Is.EqualTo("a"));
+            Assert.That(parameterList[1].Key, Is.EqualTo("param2"));
+            Assert.That(parameterList[1].Value, Is.EqualTo("b"));
         }
     }
 }

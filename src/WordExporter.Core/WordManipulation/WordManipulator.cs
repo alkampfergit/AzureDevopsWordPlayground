@@ -112,14 +112,29 @@ namespace WordExporter.Core.WordManipulation
         /// <param name="workItem"></param>
         /// <param name="workItemTemplateFile"></param>
         /// <param name="insertPageBreak"></param>
-        public void InsertWorkItem(WorkItem workItem, String workItemTemplateFile, Boolean insertPageBreak = true)
+        /// <param name="startingParameters">These parameters will be added to dictionary
+        /// with all fields of work item.</param>
+        public void InsertWorkItem(
+            WorkItem workItem, 
+            String workItemTemplateFile,
+            Boolean insertPageBreak = true, 
+            Dictionary<string, object> startingParameters = null)
         {
             //ok we need to open the template, give it a new name, perform substitution and finally append to the existing document
             var tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".docx");
             File.Copy(workItemTemplateFile, tempFile, true);
+            startingParameters = startingParameters ?? new Dictionary<string, object>();
             using (WordManipulator m = new WordManipulator(tempFile, false))
             {
-                m.SubstituteTokens(CreateDictionaryFromWorkItem(workItem));
+                Dictionary<string, object> tokenList = CreateDictionaryFromWorkItem(workItem);
+                if (startingParameters != null)
+                {
+                    foreach (var parameter in startingParameters)
+                    {
+                        tokenList[parameter.Key] = parameter.Value;
+                    }
+                }
+                m.SubstituteTokens(tokenList);
             }
 
             AppendOtherWordFile(tempFile, insertPageBreak);

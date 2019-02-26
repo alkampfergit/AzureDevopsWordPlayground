@@ -115,5 +115,48 @@ namespace WordExporter.Tests.Templates.Parser
             var querySection = def.AllSections.Single() as QuerySection;
             Assert.That(querySection.TableTemplate, Is.EqualTo("table.docx"));
         }
+
+        [Test]
+        public void Valid_parametric_query()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[query]]
+    query: ""SELECT
+        * 
+        FROM workitems
+        WHERE
+            [System.TeamProject] = @project
+            AND [System.WorkItemType] = 'Product Backlog Item'
+            AND [System.IterationPath] = '{iterationPath}'""
+    parameterSet: iterationPath=Zoalord Insurance\Release 1\Sprint 4
+    parameterSet: iterationPath=Zoalord Insurance\Release 1\Sprint 5  
+    parameterSet: iterationPath=Zoalord Insurance\Release 1\Sprint 6
+");
+            var querySection = def.AllSections.Single() as QuerySection;
+            Assert.That(querySection.QueryParameters.Count, Is.EqualTo(3));
+            Assert.That(querySection.QueryParameters[0]["iterationPath"], Is.EqualTo(@"Zoalord Insurance\Release 1\Sprint 4"));
+       Assert.That(querySection.QueryParameters[1]["iterationPath"], Is.EqualTo(@"Zoalord Insurance\Release 1\Sprint 5"));
+       Assert.That(querySection.QueryParameters[2]["iterationPath"], Is.EqualTo(@"Zoalord Insurance\Release 1\Sprint 6"));
+        }
+
+        [Test]
+        public void Multiline_query()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[query]]
+query: ""SELECT
+    * 
+    FROM workitems
+    WHERE
+        [System.TeamProject] = @project
+        AND [System.WorkItemType] = 'Product Backlog Item'
+        AND [System.IterationPath] = '{iterationPath}'""
+");
+            var querySection = def.AllSections.Single() as QuerySection;
+            Assert.That(querySection.Query.Contains("AND [System.IterationPath] = '{iterationPath}'"));
+            Assert.That(querySection.Query.Contains("[System.TeamProject] = @project"));
+        }
     }
 }

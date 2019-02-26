@@ -4,10 +4,17 @@
 [[static]]
     filename: header.docx
 [[query]]
-    query: "SELECT * FROM WorkItems "
-    template/Product Backlog Item: pbi.docx
+    query: "SELECT
+        * 
+        FROM workitems
+        WHERE [System.WorkItemType] = 'Product Backlog Item'
+            AND [System.IterationPath] = '{iterationPath}'"
+    parameterSet: iterationPath=Zoalord Insurance\Release 1\Sprint 4
+    parameterSet: iterationPath=Zoalord Insurance\Release 1\Sprint 5  
+    parameterSet: iterationPath=Zoalord Insurance\Release 1\Sprint 6
+    tableTemplate: tableWorkItem.docx
 	limit: 2
 [[query]]
-    query: "SELECT * FROM WorkItems "
-    tableTemplate: tableWorkItem.docx
+    query: "SELECT * FROM WorkItems"
+    template/Product Backlog Item: pbi.docx
 	limit: 2

@@ -39,7 +39,20 @@ namespace WordExporter.Core.Templates.Parser
         ).Named("keyvalue");
 
         public static Parser<IEnumerable<KeyValue>> KeyValueList =
-             from keyValue in KeyValue.Or(MultiLineKeyValue).Many()
+             from keyValue in MultiLineKeyValue.Or(KeyValue).Many()
+             select keyValue;
+
+        public static Parser<KeyValue> ParameterSet =
+       (
+           from key in Parse.CharExcept('=').Many().Text()
+           from separator in Parse.Char('=')
+           from value in Parse.CharExcept('|').Many().Text()
+           from pseparator in Parse.Char('|').Optional()
+           select new KeyValue(key.Trim(' ', '|'), value.Trim(' ', '\"', '\n', '\t', '\r', '|'))
+       ).Named("parameterSet");
+
+        public static Parser<IEnumerable<KeyValue>> ParameterSetList =
+             from keyValue in ParameterSet.Many()
              select keyValue;
 
         public static readonly Parser<Section> SectionParser =
