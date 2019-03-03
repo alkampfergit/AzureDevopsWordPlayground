@@ -2,12 +2,15 @@ using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.Command;
 using Microsoft.TeamFoundation.Client;
 using Microsoft.TeamFoundation.Core.WebApi;
+using Microsoft.TeamFoundation.Core.WebApi.Types;
+using Microsoft.TeamFoundation.Work.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.Client;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -58,6 +61,7 @@ namespace WordExporter.UI.ViewModel
             Connect = new RelayCommand(ConnectMethod);
             GetQueries = new RelayCommand(GetQueriesMethod);
             Export = new RelayCommand(ExportMethod);
+            GetIterations = new RelayCommand(GetIterationsMethod);
             _address = "https://dev.azure.com/gianmariaricci";
         }
 
@@ -129,6 +133,7 @@ namespace WordExporter.UI.ViewModel
             set
             {
                 Set<TeamProject>(() => this.SelectedTeamProject, ref _selectedTeamProject, value);
+                GetIterationsMethod();
             }
         }
 
@@ -219,6 +224,36 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        private ObservableCollection<ParameterViewModel> _parameters = new ObservableCollection<ParameterViewModel>();
+
+        public ObservableCollection<ParameterViewModel> Parameters
+        {
+            get
+            {
+                return _parameters;
+            }
+            set
+            {
+                _parameters = value;
+                RaisePropertyChanged(nameof(Parameters));
+            }
+        }
+
+        private ObservableCollection<IterationsViewModel> _iterations = new ObservableCollection<IterationsViewModel>();
+
+        public ObservableCollection<IterationsViewModel> Iterations
+        {
+            get
+            {
+                return _iterations;
+            }
+            set
+            {
+                _iterations = value;
+                RaisePropertyChanged(nameof(Iterations));
+            }
+        }
+
         public TemplateInfo _selectedTemplate;
 
         public TemplateInfo SelectedTemplate
@@ -230,6 +265,7 @@ namespace WordExporter.UI.ViewModel
             set
             {
                 Set<TemplateInfo>(() => this.SelectedTemplate, ref _selectedTemplate, value);
+                UpdateSelectionOfTemplate();
             }
         }
 
@@ -239,23 +275,34 @@ namespace WordExporter.UI.ViewModel
 
         public ICommand Export { get; private set; }
 
+        public ICommand GetIterations { get; private set; }
+
         private async void ConnectMethod()
         {
-            Status = "Connecting";
-            var connectionManager = new ConnectionManager();
-            await connectionManager.ConnectAsync(Address);
+            try
+            {
+                Status = "Connecting";
+                var connectionManager = new ConnectionManager();
+                await connectionManager.ConnectAsync(Address);
 
-            ProjectCollectionHttpClient projectCollectionHttpClient = connectionManager.GetClient<ProjectCollectionHttpClient>();
-            Status = "Connected, Retrieving project collection";
+                //ProjectCollectionHttpClient projectCollectionHttpClient = connectionManager.GetClient<ProjectCollectionHttpClient>();
+                //Status = "Connected, Retrieving project collection";
 
-            await GetCollecitonAsync(projectCollectionHttpClient);
+                //We do not need to get collectoin async, because we only want to retrieve project
+                //await GetCollectionAsync(projectCollectionHttpClient);
 
-            Status = "Connected, Retrieving Team Projects";
-            var projectHttpClient = connectionManager.GetClient<ProjectHttpClient>();
+                Status = "Connected, Retrieving Team Projects";
+                var projectHttpClient = connectionManager.GetClient<ProjectHttpClient>();
 
-            await GetTeamProjectAsync(projectHttpClient);
-            Status = "Connected, List of team Project retrieved";
-            Connected = true;
+                await GetTeamProjectAsync(projectHttpClient);
+                Status = "Connected, List of team Project retrieved";
+                Connected = true;
+            }
+            catch (Exception ex)
+            {
+                Status = $"Error during connection: {ex.Message}";
+                Log.Error(ex, "Error during connection");
+            }
 
             //// Connect to VSTS
             //TfsTeamProjectCollection tpc = new TfsTeamProjectCollection(_uri, creds);
@@ -275,7 +322,7 @@ namespace WordExporter.UI.ViewModel
             //collection.Authenticate();
         }
 
-        private Task GetCollecitonAsync(ProjectCollectionHttpClient projectCollectionHttpClient)
+        private Task GetCollectionAsync(ProjectCollectionHttpClient projectCollectionHttpClient)
         {
             return Task.Factory.StartNew(() =>
             {
@@ -321,6 +368,24 @@ namespace WordExporter.UI.ViewModel
             await PopulateQueries(String.Empty, witClient, queries);
         }
 
+        public async void GetIterationsMethod()
+        {
+            Iterations.Clear();
+            if (SelectedTeamProject == null)
+                return;
+
+            Status = "Getting iterations for team project " + SelectedTeamProject.Name;
+
+            WorkHttpClient workClient = ConnectionManager.Instance.GetClient<WorkHttpClient>();
+            var allIterations = await workClient.GetTeamIterationsAsync(new TeamContext(SelectedTeamProject.Id));
+
+            foreach (var iteration in allIterations)
+            {
+                Iterations.Add(new IterationsViewModel(iteration));
+            }
+            Status = "All iteration loaded";
+        }
+
         public void ExportMethod()
         {
             if (TemplateManager == null)
@@ -329,21 +394,43 @@ namespace WordExporter.UI.ViewModel
             if (SelectedTemplate == null)
                 return;
 
-            var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
-            if (selected == null || selected.Count == 0)
+            if (ConnectionManager.Instance == null)
                 return;
 
-            var template = SelectedTemplate.WordTemplateFolderManager;
             var fileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()) + ".docx";
-            using (WordManipulator manipulator = new WordManipulator(fileName, true))
+            if (SelectedTemplate.IsScriptTemplate)
             {
-                foreach (var workItemResult in selected)
+                var executor = new TemplateExecutor(SelectedTemplate.WordTemplateFolderManager);
+
+                //now we need to ask user parameter value
+                Dictionary<string, Object> parameters = new Dictionary<string, object>();
+                foreach (var parameter in Parameters)
                 {
-                    var workItem = workItemResult.WorkItem;
-                    manipulator.InsertWorkItem(workItem, template.GetTemplateFor(workItem.Type.Name), true);
+                    parameters[parameter.Name] = parameter.Value;
+                }
+                List<String> iterations = Iterations.Where(i => i.Selected).Select(i => i.Path).ToList();
+                parameters["iterations"] = iterations;
+
+                var tempFileName = Path.GetTempPath() + Guid.NewGuid().ToString() + ".docx";
+                executor.GenerateWordFile(tempFileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
+                System.Diagnostics.Process.Start(tempFileName);
+            }
+            else
+            {
+                var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
+                if (selected == null || selected.Count == 0)
+                    return;
+
+                var template = SelectedTemplate.WordTemplateFolderManager;
+                using (WordManipulator manipulator = new WordManipulator(fileName, true))
+                {
+                    foreach (var workItemResult in selected)
+                    {
+                        var workItem = workItemResult.WorkItem;
+                        manipulator.InsertWorkItem(workItem, template.GetTemplateFor(workItem.Type.Name), true);
+                    }
                 }
             }
-
             System.Diagnostics.Process.Start(fileName);
         }
 
@@ -368,6 +455,21 @@ namespace WordExporter.UI.ViewModel
                     {
                         await PopulateQueries(newPath, witClient, query.Children);
                     }
+                }
+            }
+        }
+
+        private void UpdateSelectionOfTemplate()
+        {
+            Parameters.Clear();
+            if (SelectedTemplate == null)
+                return;
+
+            if (SelectedTemplate.IsScriptTemplate)
+            {
+                foreach (var parameter in SelectedTemplate.Parameters)
+                {
+                    Parameters.Add(new ParameterViewModel(parameter));
                 }
             }
         }

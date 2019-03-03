@@ -29,6 +29,7 @@ namespace WordExporter.Core.Templates.Parser
             TableTemplate = keyValuePairList.GetStringValue("tableTemplate");
             Limit = keyValuePairList.GetIntValue("limit", Int32.MaxValue);
             QueryParameters = new List<Dictionary<string, string>>();
+            RepeatForEachIteration = keyValuePairList.GetBooleanValue("repeatForEachIteration");
             foreach (var parameter in keyValuePairList.Where(kvl => kvl.Key == "parameterSet"))
             {
                 var set = ConfigurationParser.ParameterSetList.Parse(parameter.Value);
@@ -59,7 +60,9 @@ namespace WordExporter.Core.Templates.Parser
         /// </summary>
         public List<Dictionary<String, String>> QueryParameters { get; private set; }
 
-        private Dictionary<String, String> SpecificTemplates = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<String, String> SpecificTemplates = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        public bool RepeatForEachIteration { get; private set; }
 
         public String GetTemplateForWorkItem(string workItemTypeName)
         {
@@ -83,9 +86,30 @@ namespace WordExporter.Core.Templates.Parser
         {
             parameters = parameters.ToDictionary(k => k.Key, v => v.Value); //clone
             Dictionary<String, Dictionary<String, Object>> queries = new Dictionary<string, Dictionary<string, Object>>();
+            //If we do not have query parameters we have a single query or we can have parametrized query with iterationPath
             if (QueryParameters.Count == 0)
             {
-                queries.Add(Query, parameters);
+                if (!RepeatForEachIteration)
+                {
+                    queries.Add(Query, parameters);
+                }
+                else
+                {
+                    if (parameters.TryGetValue("iterations", out object iterations)
+                        && iterations is List<String> iterationList)
+                    {
+                        foreach (var iteration in iterationList)
+                        {
+                            var query = Query.Replace("{iterationPath}", iteration);
+                            queries.Add(query, parameters);
+                        }
+                    }
+                    else
+                    {
+                        //By convention we should have a list of valid iterations names inside parameters dictionary.
+                        //TODO: handle the error.
+                    }
+                }
             }
             else
             {
@@ -136,7 +160,7 @@ namespace WordExporter.Core.Templates.Parser
                     manipulator.AppendOtherWordFile(tempFile);
                 }
             }
-        
+            
             base.Assemble(manipulator, parameters, connectionManager, wordTemplateFolderManager, teamProjectName);
         }
     }

@@ -38,8 +38,9 @@ namespace WordExporter.Tests.Templates
         [Test]
         public void Verify_enumeration_of_templates()
         {
-            var sut = new TemplateManager(GetTemplateFolder("1"));
-            Assert.That(sut.GetTemplateNames(), Is.EquivalentTo(new[] { "TemplateA", "TemplateB", "TemplateStructure", "TemplateNumbering" }));
+            string templateFolder = GetTemplateFolder("1");
+            var sut = new TemplateManager(templateFolder);
+            Assert.That(sut.GetTemplateNames(), Is.EquivalentTo(new[] { "TemplateA", "TemplateB", "TemplateStructure", "TemplateNumbering" }), "Error enumerating template in folder " + templateFolder);
         }
 
         [Test]

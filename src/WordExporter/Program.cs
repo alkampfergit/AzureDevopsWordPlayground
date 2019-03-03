@@ -135,7 +135,6 @@ namespace WordExporter
 
         private static void HandleParseError(IEnumerable<Error> errs)
         {
-
         }
 
         private static void ConfigureSerilog()

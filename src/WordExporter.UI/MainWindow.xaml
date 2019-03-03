@@ -8,20 +8,21 @@
         mc:Ignorable="d"
         DataContext="{Binding Main, Source={StaticResource Locator}}"
         Title="MainWindow"  >
-    
+
     <Window.Resources>
         <support:ValueConverterGroup x:Key="InvertAndVisibilitate">
             <support:InvertBoolConverter/>
             <BooleanToVisibilityConverter/>
         </support:ValueConverterGroup>
+        <BooleanToVisibilityConverter x:Key="booleanToVisibilityConverter" />
+        <support:NullVisibilityConverter x:Key="nullVisibilityConverter" />
     </Window.Resources>
-    
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="26"/>
             <RowDefinition Height="26"/>
             <RowDefinition Height="26" />
-            <RowDefinition Height="120" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid Grid.Row="0">
@@ -44,7 +45,6 @@
                       DisplayMemberPath="Name" 
                       SelectedValuePath="Id"
                       SelectedItem="{Binding SelectedTeamProject}"></ComboBox>
-            <Button Grid.Column="5" Width="100" Command="{Binding GetQueries}">Load Queries</Button>
         </Grid>
 
         <Grid Grid.Row="1">
@@ -59,23 +59,6 @@
             <Label Grid.Column="1" Content="{Binding Connected}"></Label>
             <Label Grid.Column="2">Status</Label>
             <Label Grid.Column="3" Content="{Binding Status}"></Label>
-        </Grid>
-
-        <Grid Grid.Row="3" 
-              Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource InvertAndVisibilitate}}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="100"/>
-
-            </Grid.ColumnDefinitions>
-
-            <ListBox Grid.Column="0" ItemsSource="{Binding Queries}" DisplayMemberPath="FullPath" SelectedItem="{Binding SelectedQuery}">
-
-            </ListBox>
-
-            <StackPanel Grid.Column="1" Orientation="Vertical">
-                <Button Command="{Binding SelectedQuery.Execute}">Execute Query</Button>
-            </StackPanel>
         </Grid>
 
         <Grid Grid.Row="2">
@@ -95,31 +78,113 @@
             <Button Grid.Column="3"  Command="{Binding Export}">Export</Button>
         </Grid>
 
-        <Grid Grid.Row="4"
-              Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource InvertAndVisibilitate}}">
-            <ListView Grid.Column="0" ItemsSource="{Binding SelectedQuery.Results}" >
-                <ListView.View>
-                    <GridView>
+        <Grid Grid.Row="3" 
+              Visibility="{Binding SelectedTemplate, Converter={StaticResource nullVisibilityConverter}}">
 
-                        <GridViewColumn>
-                            <GridViewColumn.CellTemplate>
+            <Grid Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource booleanToVisibilityConverter }}">
+
+                <Grid.RowDefinitions>
+                    <RowDefinition></RowDefinition>
+                    <RowDefinition Height="4"></RowDefinition>
+                    <RowDefinition></RowDefinition>
+                </Grid.RowDefinitions>
+
+                <!--<Button Grid.Row="0" Command="{Binding GetIterations}" Content="Load all team project iterations" />-->
+                <DataGrid Grid.Row="0"  ItemsSource="{Binding Parameters}" AutoGenerateColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="300" Header="Name">
+                            <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Grid HorizontalAlignment="Stretch">
-                                        <CheckBox  x:Name="chkAvg" IsChecked="{Binding Selected}" />
-                                    </Grid>
+                                    <Label Content="{Binding Name}" Height="26" />
                                 </DataTemplate>
-                            </GridViewColumn.CellTemplate>
-                            <Grid>
-                                <CheckBox x:Name="chkAvgSelectAll" Content="Sel" 
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+ 
+                        <DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <!--<ListView Grid.Row="0" ItemsSource="{Binding Parameters}" >
+                    <ListView.View>
+                        <GridView>
+
+                            <GridViewColumn Header="Name" Width="120" DisplayMemberBinding="{Binding Name}" />
+                            <GridViewColumn Header="Value" Width="auto" >
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Path=Value}" TextWrapping="Wrap" Margin="0"></TextBlock>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>-->
+
+                <GridSplitter Grid.Row="1" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
+
+                <ListView Grid.Row="2" ItemsSource="{Binding Iterations}" >
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid HorizontalAlignment="Stretch">
+                                            <CheckBox  x:Name="chkAvg" IsChecked="{Binding Selected}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Path" Width="120" DisplayMemberBinding="{Binding Path}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Grid>
+
+            <Grid Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource InvertAndVisibilitate}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="100"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition></RowDefinition>
+                    <RowDefinition Height="auto"></RowDefinition>
+                    <RowDefinition></RowDefinition>
+                </Grid.RowDefinitions>
+                
+                <ListBox Grid.Column="0" Grid.Row="0" ItemsSource="{Binding Queries}" DisplayMemberPath="FullPath" SelectedItem="{Binding SelectedQuery}">
+
+                </ListBox>
+
+                <StackPanel Grid.Column="1" Grid.Row="0"  Orientation="Vertical">
+                    <Button Width="100" Command="{Binding GetQueries}">Load Queries</Button>
+                    <Button Command="{Binding SelectedQuery.Execute}">Execute Query</Button>
+                </StackPanel>
+
+                <GridSplitter Grid.Row="1" ResizeBehavior="PreviousAndNext" Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="Black" HorizontalAlignment="Stretch" VerticalAlignment="Top" ResizeDirection="Rows"/>
+
+                <ListView Grid.Row="2" Grid.ColumnSpan="2" ItemsSource="{Binding SelectedQuery.Results}" >
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid HorizontalAlignment="Stretch">
+                                            <CheckBox  x:Name="chkAvg" IsChecked="{Binding Selected}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                                <Grid>
+                                    <CheckBox x:Name="chkAvgSelectAll" Content="Sel" 
                                           IsChecked="{Binding SelectedQuery.SelectAllSelected}"
                                           ToolTip="Select All" Command="{Binding SelectedQuery.SelectAll}" />
-                            </Grid>
-                        </GridViewColumn>
-                        <GridViewColumn Header="Id" Width="120" DisplayMemberBinding="{Binding Id}" />
-                        <GridViewColumn Header="Title" Width="120" DisplayMemberBinding="{Binding Title}" />
-                    </GridView>
-                </ListView.View>
-            </ListView>
+                                </Grid>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Id" Width="120" DisplayMemberBinding="{Binding Id}" />
+                            <GridViewColumn Header="Title" Width="120" DisplayMemberBinding="{Binding Title}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Grid>
+
         </Grid>
     </Grid>
 </Window>

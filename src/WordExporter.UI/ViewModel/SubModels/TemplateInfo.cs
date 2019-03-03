@@ -1,5 +1,7 @@
 ﻿using GalaSoft.MvvmLight;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using WordExporter.Core.Templates;
 
 namespace WordExporter.UI.ViewModel.SubModels
@@ -13,6 +15,11 @@ namespace WordExporter.UI.ViewModel.SubModels
             IsScriptTemplate = wordTemplateFolderManager.HasTemplateDefinition;
             TemplateName = templateName;
             WordTemplateFolderManager = wordTemplateFolderManager;
+            if (IsScriptTemplate)
+            {
+                //copy list of parameters
+                Parameters = wordTemplateFolderManager.TemplateDefinition.Parameters.ParameterNames.ToList();
+            }
         }
 
         private Boolean _isScriptTemplate;
@@ -40,6 +47,20 @@ namespace WordExporter.UI.ViewModel.SubModels
             set
             {
                 Set<String>(() => this.TemplateName, ref _templateName, value);
+            }
+        }
+
+        private List<String> _parameters;
+
+        public List<String> Parameters
+        {
+            get
+            {
+                return _parameters;
+            }
+            set
+            {
+                Set<List<String>>(() => this.Parameters, ref _parameters, value);
             }
         }
     }

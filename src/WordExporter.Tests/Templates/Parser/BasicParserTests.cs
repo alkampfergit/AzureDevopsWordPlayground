@@ -117,6 +117,20 @@ namespace WordExporter.Tests.Templates.Parser
         }
 
         [Test]
+        public void Valid_query_iteration_parameter()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[query]]
+    query: ""SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'""
+    tableTemplate: table.docx
+    repeatForEachIteration: true
+");
+            var querySection = def.AllSections.Single() as QuerySection;
+            Assert.That(querySection.RepeatForEachIteration, Is.True);
+        }
+
+        [Test]
         public void Valid_parametric_query()
         {
             var sut = new ConfigurationParser();
