@@ -169,6 +169,7 @@ namespace WordExporter.Core.WordManipulation
                     continue; //This is a special field, ignore.
 
                 retValue[field.Name] = field.Value?.ToString() ?? String.Empty;
+                retValue[field.ReferenceName] = field.Value?.ToString() ?? String.Empty;
             }
             return retValue;
         }
@@ -800,12 +801,49 @@ namespace WordExporter.Core.WordManipulation
             IEnumerable<WorkItem> workItems)
         {
             List<Dictionary<String, Object>> workItemCellsData = new List<Dictionary<String, Object>>();
+            List<Int32> parentList = new List<Int32>();
+            foreach (var workItem in workItems)
+            {
+                RelatedLink parentLink = GetParentLink(workItem);
+                if (parentLink != null)
+                {
+                    parentList.Add(parentLink.RelatedWorkItemId);
+                }
+            }
+
+            //ok now we need to grab all parent link, just to grab 
+            var query = $@"SELECT
+    [System.Id],
+    [System.Title]
+FROM workitems
+WHERE [System.Id] IN ({String.Join(",", parentList)})
+ORDER BY [System.Id]
+";
+            //ok, query all the parents
+            var parentWorkItems = ConnectionManager.Instance.WorkItemStore.Query(query)
+                .OfType<WorkItem>()
+                .ToDictionary(w => w.Id);
+
             foreach (var workItem in workItems)
             {
                 var parameters = CreateDictionaryFromWorkItem(workItem);
+                RelatedLink parentLink = GetParentLink(workItem);
+                if (parentWorkItems.TryGetValue(parentLink?.RelatedWorkItemId ?? 0, out var parent))
+                {
+                    parameters["parent.title"] = parent.Title;
+                    parameters["parent.id"] = parent.Id;
+                }
                 workItemCellsData.Add(parameters);
             }
             return FillCompositeTable(skipHeader, workItemCellsData);
+        }
+
+        private static RelatedLink GetParentLink(WorkItem workItem)
+        {
+            return workItem
+                                .Links
+                                .OfType<RelatedLink>()
+                                .SingleOrDefault(l => l.LinkTypeEnd.Name == "Parent");
         }
 
         #endregion

@@ -397,6 +397,18 @@ namespace WordExporter.UI.ViewModel
             if (ConnectionManager.Instance == null)
                 return;
 
+            try
+            {
+                InnerExecuteExport();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error exporting template: {message}", ex.Message);
+            }
+        }
+
+        private void InnerExecuteExport()
+        {
             var fileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()) + ".docx";
             if (SelectedTemplate.IsScriptTemplate)
             {
@@ -411,9 +423,7 @@ namespace WordExporter.UI.ViewModel
                 List<String> iterations = Iterations.Where(i => i.Selected).Select(i => i.Path).ToList();
                 parameters["iterations"] = iterations;
 
-                var tempFileName = Path.GetTempPath() + Guid.NewGuid().ToString() + ".docx";
-                executor.GenerateWordFile(tempFileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
-                System.Diagnostics.Process.Start(tempFileName);
+                executor.GenerateWordFile(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
             }
             else
             {

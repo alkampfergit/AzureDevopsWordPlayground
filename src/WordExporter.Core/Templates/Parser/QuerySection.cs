@@ -1,10 +1,7 @@
 ﻿using Sprache;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using WordExporter.Core.Support;
 using WordExporter.Core.WordManipulation;
 using WordExporter.Core.WorkItems;
@@ -85,13 +82,56 @@ namespace WordExporter.Core.Templates.Parser
             string teamProjectName)
         {
             parameters = parameters.ToDictionary(k => k.Key, v => v.Value); //clone
-            Dictionary<String, Dictionary<String, Object>> queries = new Dictionary<string, Dictionary<string, Object>>();
             //If we do not have query parameters we have a single query or we can have parametrized query with iterationPath
+            var queries = PrepareQueries(parameters);
+            WorkItemManger workItemManger = new WorkItemManger(connectionManager);
+            workItemManger.SetTeamProject(teamProjectName);
+
+            foreach (var query in queries)
+            {
+                var workItems = workItemManger.ExecuteQuery(query).Take(Limit);
+
+                if (String.IsNullOrEmpty(TableTemplate))
+                {
+                    foreach (var workItem in workItems)
+                    {
+                        if (!SpecificTemplates.TryGetValue(workItem.Type.Name, out var templateName))
+                        {
+                            templateName = wordTemplateFolderManager.GetTemplateFor(workItem.Type.Name);
+                        }
+                        else
+                        {
+                            templateName = wordTemplateFolderManager.GenerateFullFileName(templateName);
+                        }
+
+                        manipulator.InsertWorkItem(workItem, templateName, true, parameters);
+                    }
+                }
+                else
+                {
+                    //We have a table template, we want to export work item as a list 
+                    var tableFile = wordTemplateFolderManager.GenerateFullFileName(TableTemplate);
+                    var tempFile = wordTemplateFolderManager.CopyFileInTempDirectory(tableFile);
+                    using (var tableManipulator = new WordManipulator(tempFile, false))
+                    {
+                        tableManipulator.SubstituteTokens(parameters);
+                        tableManipulator.FillTableWithCompositeWorkItems(true, workItems);
+                    }
+                    manipulator.AppendOtherWordFile(tempFile);
+                }
+            }
+
+            base.Assemble(manipulator, parameters, connectionManager, wordTemplateFolderManager, teamProjectName);
+        }
+
+        private List<String> PrepareQueries(Dictionary<string, object> parameters)
+        {
+            var retValue = new List<String>();
             if (QueryParameters.Count == 0)
             {
                 if (!RepeatForEachIteration)
                 {
-                    queries.Add(Query, parameters);
+                    retValue.Add(SubstituteParametersInQuery(Query, parameters));
                 }
                 else
                 {
@@ -101,7 +141,7 @@ namespace WordExporter.Core.Templates.Parser
                         foreach (var iteration in iterationList)
                         {
                             var query = Query.Replace("{iterationPath}", iteration);
-                            queries.Add(query, parameters);
+                            retValue.Add(SubstituteParametersInQuery(query, parameters));
                         }
                     }
                     else
@@ -121,47 +161,21 @@ namespace WordExporter.Core.Templates.Parser
                         query = query.Replace('{' + parameter.Key + '}', parameter.Value);
                         parameters[parameter.Key] = parameter.Value;
                     }
-                    queries.Add(query, parameterSet.ToDictionary(k => k.Key, v => (Object)v.Value));
+                    retValue.Add(SubstituteParametersInQuery(query, parameters));
                 }
             }
-            WorkItemManger workItemManger = new WorkItemManger(connectionManager);
-            workItemManger.SetTeamProject(teamProjectName);
 
-            foreach (var query in queries)
+            return retValue;
+        }
+
+        private string SubstituteParametersInQuery(string query, Dictionary<string, object> parameters)
+        {
+            foreach (var parameter in parameters)
             {
-                var workItems = workItemManger.ExecuteQuery(query.Key).Take(Limit);
-
-                if (String.IsNullOrEmpty(TableTemplate))
-                {
-                    foreach (var workItem in workItems)
-                    {
-                        if (!SpecificTemplates.TryGetValue(workItem.Type.Name, out var templateName))
-                        {
-                            templateName = wordTemplateFolderManager.GetTemplateFor(workItem.Type.Name);
-                        }
-                        else
-                        {
-                            templateName = wordTemplateFolderManager.GenerateFullFileName(templateName);
-                        }
-
-                        manipulator.InsertWorkItem(workItem, templateName, true, query.Value);
-                    }
-                }
-                else
-                {
-                    //We have a table template, we want to export work item as a list
-                    var tableFile = wordTemplateFolderManager.GenerateFullFileName(TableTemplate);
-                    var tempFile = wordTemplateFolderManager.CopyFileInTempDirectory(tableFile);
-                    using (var tableManipulator = new WordManipulator(tempFile, false))
-                    {
-                        tableManipulator.SubstituteTokens(query.Value);
-                        tableManipulator.FillTableWithCompositeWorkItems(true, workItems);
-                    }
-                    manipulator.AppendOtherWordFile(tempFile);
-                }
+                var value = parameter.Value?.ToString() ?? "";
+                query = query.Replace('{' + parameter.Key + '}', value);
             }
-            
-            base.Assemble(manipulator, parameters, connectionManager, wordTemplateFolderManager, teamProjectName);
+            return query;
         }
     }
 }

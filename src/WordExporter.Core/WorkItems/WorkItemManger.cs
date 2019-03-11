@@ -39,14 +39,7 @@ namespace WordExporter.Core.WorkItems
             query.AppendLine(wiqlQuery);
             if (!String.IsNullOrEmpty(_teamProjectName))
             {
-                if (wiqlQuery.IndexOf(" where ", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    query.AppendLine($" AND [System.TeamProject] = '{_teamProjectName}'");
-                }
-                else
-                {
-                    query.AppendLine($" WHERE [System.TeamProject] = '{_teamProjectName}'");
-                }
+                query = query.Replace("{teamProjectName}", _teamProjectName);
             }
 
             return _connection.WorkItemStore.Query(query.ToString())
