@@ -171,6 +171,30 @@ namespace WordExporter.Core.WordManipulation
                 retValue[field.Name] = field.Value?.ToString() ?? String.Empty;
                 retValue[field.ReferenceName] = field.Value?.ToString() ?? String.Empty;
             }
+
+            //ok some of the historical value could be of interests, as an example the last user timestamp for each state change
+            //is an information that can be interesting
+            if (workItem.Revisions.Count > 0)
+            {
+                foreach (Revision revision in workItem.Revisions)
+                {
+                    var fieldsChanged = revision
+                        .Fields
+                        .OfType<Field>()
+                        .Where(f => f.IsChangedInRevision)
+                        .ToList();
+                    var changedBy = revision.Fields["Changed By"].Value;
+                    var changedDate = revision.Fields["Changed Date"].Value;
+                    foreach (var field in fieldsChanged)
+                    {
+                        if (field.ReferenceName.Equals( "system.state", StringComparison.OrdinalIgnoreCase))
+                        {
+                            retValue[$"statechange.{field.Value.ToString().ToLower()}.author"] = changedBy;
+                            retValue[$"statechange.{field.Value.ToString().ToLower()}.date"] = ((DateTime) changedDate).ToShortDateString();
+                        }
+                    }
+                }
+            }
             return retValue;
         }
 
