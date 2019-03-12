@@ -168,6 +168,8 @@ namespace WordExporter.Core.WordManipulation
                 if (specialFields.Contains(field.Name))
                     continue; //This is a special field, ignore.
 
+                var value = GetValue(field);
+
                 retValue[field.Name] = field.Value?.ToString() ?? String.Empty;
                 retValue[field.ReferenceName] = field.Value?.ToString() ?? String.Empty;
             }
@@ -187,15 +189,31 @@ namespace WordExporter.Core.WordManipulation
                     var changedDate = revision.Fields["Changed Date"].Value;
                     foreach (var field in fieldsChanged)
                     {
-                        if (field.ReferenceName.Equals( "system.state", StringComparison.OrdinalIgnoreCase))
+                        if (field.ReferenceName.Equals("system.state", StringComparison.OrdinalIgnoreCase))
                         {
                             retValue[$"statechange.{field.Value.ToString().ToLower()}.author"] = changedBy;
                             retValue[$"statechange.{field.Value.ToString().ToLower()}.date"] = ((DateTime) changedDate).ToShortDateString();
+                        }
+                        else if (field.ReferenceName.Equals("system.areapath", StringComparison.OrdinalIgnoreCase))
+                        {
+                            retValue[$"lastareapathchange.author"] = changedBy;
+                            retValue[$"lastareapathchange.date"] = ((DateTime)changedDate).ToShortDateString();
                         }
                     }
                 }
             }
             return retValue;
+        }
+
+        private String GetValue(Field field)
+        {
+            if (field.Value == null)
+                return String.Empty;
+
+            if (field.Value is DateTime dateTime)
+                return dateTime.ToShortDateString();
+
+            return field.Value.ToString();
         }
 
         #endregion

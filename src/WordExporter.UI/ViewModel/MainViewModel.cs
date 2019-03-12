@@ -21,6 +21,7 @@ using System.Windows.Input;
 using WordExporter.Core;
 using WordExporter.Core.Templates;
 using WordExporter.Core.WordManipulation;
+using WordExporter.UI.Support;
 using WordExporter.UI.ViewModel.SubModels;
 
 namespace WordExporter.UI.ViewModel
@@ -57,12 +58,12 @@ namespace WordExporter.UI.ViewModel
             //    Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory),
             //    "Templates");
 
-            TemplateFolder = @"C:\develop\GitHub\AzureDevopsWordPlayground\src\WordExporter\Templates";
+            TemplateFolder = StatePersister.Instance.Load<String>("main.TemplateFolder") ?? @"C:\develop\GitHub\AzureDevopsWordPlayground\src\WordExporter\Templates";
             Connect = new RelayCommand(ConnectMethod);
             GetQueries = new RelayCommand(GetQueriesMethod);
             Export = new RelayCommand(ExportMethod);
             GetIterations = new RelayCommand(GetIterationsMethod);
-            _address = "https://dev.azure.com/gianmariaricci";
+            Address = StatePersister.Instance.Load<String>("main.Address") ?? String.Empty;
         }
 
         private Boolean _connected;
@@ -104,6 +105,7 @@ namespace WordExporter.UI.ViewModel
             set
             {
                 Set<String>(() => this.Address, ref _address, value);
+                StatePersister.Instance.Save("main.Address", value);
             }
         }
 
@@ -187,6 +189,7 @@ namespace WordExporter.UI.ViewModel
                         var info = new TemplateInfo(template, wordTemplate);
                         Templates.Add(info);
                     }
+                    StatePersister.Instance.Save("main.TemplateFolder", value);
                 }
                 else
                 {

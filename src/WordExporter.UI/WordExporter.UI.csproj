@@ -253,6 +253,7 @@
     </ApplicationDefinition>
     <Compile Include="Support\InvertBoolConverter.cs" />
     <Compile Include="Support\NullToVisibilityConverter.cs" />
+    <Compile Include="Support\StatePersister.cs" />
     <Compile Include="Support\ValueConverterGroup.cs" />
     <Compile Include="ViewModel\IterationsViewModel.cs" />
     <Compile Include="ViewModel\MainViewModel.cs" />

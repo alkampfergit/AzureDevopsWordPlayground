@@ -1,6 +1,8 @@
 ﻿using Serilog;
 using Serilog.Exceptions;
+using System.ComponentModel;
 using System.Windows;
+using WordExporter.UI.Support;
 
 namespace WordExporter.UI
 {
@@ -26,6 +28,12 @@ namespace WordExporter.UI
                      restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error
                 )
                 .CreateLogger();
+        }
+
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            StatePersister.Instance.Persist();
+            base.OnClosing(e);
         }
     }
 }
