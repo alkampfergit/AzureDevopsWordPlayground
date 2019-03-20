@@ -28,7 +28,10 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <InstallUrl>https://testfuncalkampfer.blob.core.windows.net/wordexporter/</InstallUrl>
-    <ApplicationRevision>2</ApplicationRevision>
+    <UpdateUrl>https://testfuncalkampfer.blob.core.windows.net/wordexporter/</UpdateUrl>
+    <ProductName>Azure DevOps Word Exporter</ProductName>
+    <PublisherName>Ricci Gian Maria</PublisherName>
+    <ApplicationRevision>4</ApplicationRevision>
     <ApplicationVersion>0.3.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
