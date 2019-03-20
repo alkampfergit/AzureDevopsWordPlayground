@@ -1,0 +1,18 @@
+﻿[[parameters]]
+	param1
+	param2
+[[static]]
+    filename: header.docx
+[[query]]
+    query: "SELECT
+        * 
+        FROM workitems
+        WHERE [System.WorkItemType] = 'Product Backlog Item'
+            AND [System.IterationPath] = '{iterationPath}'"
+    repeatForEachIteration: true
+    tableTemplate: tableWorkItem.docx
+	limit: 4
+[[query]]
+    query: "SELECT * FROM WorkItems"
+    template/Product Backlog Item: pbi.docx
+	limit: 2

@@ -48,6 +48,18 @@ namespace WordExporter.Support
             HelpText = "Area Path")]
         public String AreaPath { get; set; }
 
+        [Option(
+            "templateName",
+            Required = false,
+            HelpText = "Specify the name of the template, the template should be a subfolder of the parent template folder.")]
+        public String TemplateName { get; set; }
+
+        [Option(
+            "templateFolder",
+            Required = false,
+            HelpText = "Name of the folder that contains template to use, if this parameter is present we assume that the folder contain a valid structure.txt file")]
+        public String TemplateFolder { get; set; }
+
         internal string GetAccessToken()
         {
             if (!String.IsNullOrEmpty(AccessTokenFile))

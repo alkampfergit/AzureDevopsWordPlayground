@@ -1,0 +1,7 @@
+﻿[[parameters]]
+	test
+	blah
+[[query]]
+    query: "SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'"
+    template/Product Backlog Item: pbix.docx
+    template/Bug: bugaa.docx

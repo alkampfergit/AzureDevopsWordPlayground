@@ -47,6 +47,9 @@ namespace WordExporter.Core.WordManipulation
         private readonly MainDocumentPart _mainDocumentPart;
         private readonly Body _body;
 
+        public WordprocessingDocument Document => _document;
+        public Body DocumentBody => _body;
+
         #region IDisposable Support
 
         private bool disposedValue = false; // To detect redundant calls
@@ -101,28 +104,116 @@ namespace WordExporter.Core.WordManipulation
 
         #region Manipulation of the word document to create data
 
-        public void InsertWorkItem(WorkItem workItem, String workItemTemplateFile, Boolean insertPageBreak = true)
+        /// <summary>
+        /// Insert a simple work item, it will use all the fields from work item
+        /// and perform substitution, then append the new work item to the current
+        /// document.
+        /// </summary>
+        /// <param name="workItem"></param>
+        /// <param name="workItemTemplateFile"></param>
+        /// <param name="insertPageBreak"></param>
+        /// <param name="startingParameters">These parameters will be added to dictionary
+        /// with all fields of work item.</param>
+        public void InsertWorkItem(
+            WorkItem workItem, 
+            String workItemTemplateFile,
+            Boolean insertPageBreak = true, 
+            Dictionary<string, object> startingParameters = null)
         {
             //ok we need to open the template, give it a new name, perform substitution and finally append to the existing document
-            var tempFile = Path.GetTempFileName();
+            var tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".docx");
             File.Copy(workItemTemplateFile, tempFile, true);
+            startingParameters = startingParameters ?? new Dictionary<string, object>();
             using (WordManipulator m = new WordManipulator(tempFile, false))
             {
-                m.SubstituteTokens(CreateDictionaryFromWorkItem(workItem));
+                Dictionary<string, object> tokenList = CreateDictionaryFromWorkItem(workItem);
+                if (startingParameters != null)
+                {
+                    foreach (var parameter in startingParameters)
+                    {
+                        tokenList[parameter.Key] = parameter.Value;
+                    }
+                }
+                m.SubstituteTokens(tokenList);
             }
 
             AppendOtherWordFile(tempFile, insertPageBreak);
             File.Delete(tempFile);
         }
 
+        /// <summary>
+        /// Simply create a dictionary of substitution values from all the fields
+        /// of the work item.
+        /// </summary>
+        /// <param name="workItem"></param>
+        /// <returns></returns>
         private Dictionary<String, Object> CreateDictionaryFromWorkItem(WorkItem workItem)
         {
-            var retValue = new Dictionary<String, Object>();
+            var retValue = new Dictionary<String, Object>(StringComparer.OrdinalIgnoreCase);
             retValue["title"] = workItem.Title;
+            retValue["id"] = workItem.Id;
+            //Some help to avoid forcing the user to use System.AssignedTo etc for most commonly used fields.
             retValue["description"] = new HtmlSubstitution(workItem.EmbedHtmlContent(workItem.Description));
             retValue["assignedto"] = workItem.Fields["System.AssignedTo"].Value?.ToString() ?? String.Empty;
             retValue["createdby"] = workItem.Fields["System.CreatedBy"].Value?.ToString() ?? String.Empty;
+
+            HashSet<String> specialFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "description",
+            };
+
+            //All the fields will be set in raw format.
+            foreach (Field field in workItem.Fields)
+            {
+                if (specialFields.Contains(field.Name))
+                    continue; //This is a special field, ignore.
+
+                var value = GetValue(field);
+
+                retValue[field.Name] = field.Value?.ToString() ?? String.Empty;
+                retValue[field.ReferenceName] = field.Value?.ToString() ?? String.Empty;
+            }
+
+            //ok some of the historical value could be of interests, as an example the last user timestamp for each state change
+            //is an information that can be interesting
+            if (workItem.Revisions.Count > 0)
+            {
+                foreach (Revision revision in workItem.Revisions)
+                {
+                    var fieldsChanged = revision
+                        .Fields
+                        .OfType<Field>()
+                        .Where(f => f.IsChangedInRevision)
+                        .ToList();
+                    var changedBy = revision.Fields["Changed By"].Value;
+                    var changedDate = revision.Fields["Changed Date"].Value;
+                    foreach (var field in fieldsChanged)
+                    {
+                        if (field.ReferenceName.Equals("system.state", StringComparison.OrdinalIgnoreCase))
+                        {
+                            retValue[$"statechange.{field.Value.ToString().ToLower()}.author"] = changedBy;
+                            retValue[$"statechange.{field.Value.ToString().ToLower()}.date"] = ((DateTime) changedDate).ToShortDateString();
+                        }
+                        else if (field.ReferenceName.Equals("system.areapath", StringComparison.OrdinalIgnoreCase))
+                        {
+                            retValue[$"lastareapathchange.author"] = changedBy;
+                            retValue[$"lastareapathchange.date"] = ((DateTime)changedDate).ToShortDateString();
+                        }
+                    }
+                }
+            }
             return retValue;
+        }
+
+        private String GetValue(Field field)
+        {
+            if (field.Value == null)
+                return String.Empty;
+
+            if (field.Value is DateTime dateTime)
+                return dateTime.ToShortDateString();
+
+            return field.Value.ToString();
         }
 
         #endregion
@@ -269,9 +360,9 @@ namespace WordExporter.Core.WordManipulation
 
                             var textOfLastRun = runThatMatches.Last().Run.InnerText;
                             var endTokenPosition = textOfLastRun.IndexOf("}}");
-                            if (endTokenPosition < textOfLastRun.Length - 3)
+                            if (endTokenPosition <= textOfLastRun.Length - 3)
                             {
-                                runAfter = new Run(new Text(textOfFirstRun.Substring(endTokenPosition + 2)));
+                                runAfter = new Run(new Text(textOfLastRun.Substring(endTokenPosition + 2)));
                             }
                             else
                             {
@@ -289,15 +380,15 @@ namespace WordExporter.Core.WordManipulation
 
                             if (contextRun is AltChunk)
                             {
-                                _body.InsertAfter(contextRun, paragraph);
-                                _body.RemoveChild(paragraph);
+                                paragraph.Parent.ReplaceChild(contextRun, paragraph);
+                                //_body.RemoveChild(paragraph);
                                 break; //no more replace in this paragraph, html will replace everything
                             }
                             else
                             {
-                                paragraph.InsertAfter(runBefore, firstRunToReplace);
-                                paragraph.InsertAfter(contextRun, firstRunToReplace);
-                                paragraph.InsertAfter(runAfter, firstRunToReplace);
+                                paragraph.InsertBefore(runBefore, firstRunToReplace);
+                                paragraph.InsertBefore(contextRun, firstRunToReplace);
+                                paragraph.InsertBefore(runAfter, firstRunToReplace);
 
                                 foreach (var runToRemove in runThatMatches)
                                 {
@@ -522,6 +613,280 @@ namespace WordExporter.Core.WordManipulation
         //    }
         //    return this;
         //}
+
+        #endregion
+
+        #region Table
+
+        /// <summary>
+        /// <para>
+        /// This is a really rudimental method to fill a table with content, it assumes
+        /// that the opened document has only one table, and it will fill the table.
+        /// with data.
+        /// </para>
+        /// <para>
+        /// If the table already have rows, all rows will be deleted, but the first row
+        /// will be used to maintain the formatting styles. This means that if you want
+        /// formatting to be maintained you should simply insert a row with or without data
+        /// formatted as you like.
+        /// </para>
+        /// </summary>
+        /// <param name="skipHeader">If true it will skip the first line of the table.</param>
+        /// <param name="data">this is a matrix, expressed by a couple of IEnumerable to simplify
+        /// data passing</param>
+        /// <returns></returns>
+        public WordManipulator FillTable(
+            Boolean skipHeader,
+            IEnumerable<IEnumerable<Object>> data)
+        {
+            var table = _document.MainDocumentPart.Document.Body
+                .Descendants<Table>()
+                .FirstOrDefault();
+            if (table != null)
+            {
+                //remove every rows but first save the first two rows for the formatting.
+                var rows = table.Elements<TableRow>().ToList();
+                Int32 skip = skipHeader ? 1 : 0;
+                foreach (var row in rows.Skip(skip))
+                {
+                    row.Remove();
+                }
+
+                Boolean isFirstRow = true;
+                foreach (var dataRow in data)
+                {
+                    TableRow row = null;
+                    TableRow templateRow;
+                    //template rows depends from skipping or not skipping the header template.
+                    if (skipHeader)
+                    {
+                        //header is skipped, take the second row if present.
+                        templateRow = rows.Skip(1).FirstOrDefault();
+                    }
+                    else
+                    {
+                        //we do not want to skip header
+                        var rowToSkip = isFirstRow || rows.Count < 2 ? 0 : 1;
+                        templateRow = rows.Skip(rowToSkip).FirstOrDefault();
+                    }
+                    if (templateRow == null)
+                    {
+                        row = new TableRow();
+                        foreach (var dataCell in dataRow)
+                        {
+                            var cell = new TableCell();
+
+                            // Specify the table cell content.
+                            cell.Append(new Paragraph(new Run(new Text(dataCell.ToString()))));
+
+                            // Append the table cell to the table row.
+                            row.Append(cell);
+                        }
+                    }
+                    else
+                    {
+                        row = (TableRow)templateRow.CloneNode(true);
+                        //Grab all the run style of first row to copy on all subsequence cell.
+                        var runs = templateRow.Descendants<TableCell>()
+                            .Select(_ => _.Descendants<Run>().FirstOrDefault())
+                            .ToList();
+                        var cells = row.Descendants<TableCell>().ToList();
+                        Int32 cellIndex = 0;
+                        foreach (var dataCell in dataRow)
+                        {
+                            if (cellIndex < cells.Count)
+                            {
+                                var cell = cells[cellIndex];
+                                var run = runs[cellIndex];
+
+                                // Specify the table cell content.
+                                Run runToAdd = new Run(new Text(dataCell.ToString()));
+                                CopyPropertiesFromRun(run, runToAdd);
+
+                                //we can  have two distinct situation, we have or we do not have paragraph
+                                var paragraph = cell.Descendants<Paragraph>().FirstOrDefault();
+                                if (paragraph == null)
+                                {
+                                    cell.Append(new Paragraph(runToAdd));
+                                }
+                                else
+                                {
+                                    paragraph.RemoveAllChildren<Run>();
+                                    paragraph.Append(runToAdd);
+                                }
+                            }
+                            cellIndex++;
+                        }
+                    }
+                    table.Append(row);
+                    isFirstRow = false;
+                }
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// A composite table is a table where we have usually an header, then a first row that have
+        /// cells populated with substitution value. We need to replicate the row with the substitution
+        /// for each cell value.
+        /// </summary>
+        /// <param name="skipHeader"></param>
+        /// <param name="data">A series of dictionaries, each dictionary contains
+        /// substitution values for an entire row.</param>
+        /// <returns></returns>
+        public WordManipulator FillCompositeTable(
+          Boolean skipHeader,
+          IEnumerable<Dictionary<String, Object>> data)
+        {
+            var table = _document.MainDocumentPart.Document.Body
+                .Descendants<Table>()
+                .FirstOrDefault();
+            if (table != null)
+            {
+                //remove every rows but keep formatting row.
+                var rows = table.Elements<TableRow>().ToList();
+                Int32 skip = skipHeader ? 1 : 0;
+
+                TableRow templateRow = rows.Skip(skip).FirstOrDefault();
+                table.RemoveChild(templateRow);
+
+                if (templateRow != null)
+                {
+                    foreach (var dataRow in data)
+                    {
+                        var row = (TableRow)templateRow.CloneNode(true);
+
+                        //Grab all the run style of first row to copy on all subsequence cell.
+                        var paragraph = row.Descendants<Paragraph>();
+                        var realReplaceList = dataRow.ToDictionary(_ => CreateSubstitutionTokenFromName(_.Key), _ => _.Value);
+
+                        SubstituteInParagraph(realReplaceList, paragraph);
+                        table.Append(row);
+                    }
+                }
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// We have a table with an header (optional) and the first row, where in each cell we 
+        /// specify the field of the work item we want to include in the cell.
+        /// </summary>
+        /// <param name="skipHeader"></param>
+        /// <param name="workItems"></param>
+        /// <returns></returns>
+        public WordManipulator FillTableWithSingleFieldWorkItems(
+            Boolean skipHeader,
+            IEnumerable<WorkItem> workItems)
+        {
+            var table = _document.MainDocumentPart.Document.Body
+                .Descendants<Table>()
+                .FirstOrDefault();
+            if (table != null)
+            {
+                //remove every rows but first save the first two rows for the formatting.
+                var rows = table.Elements<TableRow>().ToList();
+                Int32 skip = skipHeader ? 1 : 0;
+                var rowWithField = rows.Skip(skip).First();
+                List<List<String>> workItemCellsData = new List<List<string>>();
+                List<String> cellFields = new List<string>();
+                var cells = rowWithField.Descendants<TableCell>().ToList();
+                foreach (var dataCell in cells)
+                {
+                    //ok for each cell we need to grab the field name
+                    //in this first version we support only a field for each column
+                    var dataCellText = dataCell.InnerText;
+                    var match = Regex.Match(dataCellText, @"\{\{(?<name>.*?)\}\}");
+                    if (match.Success)
+                    {
+                        cellFields.Add(match.Groups["name"].Value);
+                    }
+                    else
+                    {
+                        cellFields.Add("");
+                    }
+                }
+                foreach (var workItem in workItems)
+                {
+                    List<String> row = new List<string>();
+                    var properties = this.CreateDictionaryFromWorkItem(workItem);
+                    foreach (var field in cellFields)
+                    {
+                        if (properties.TryGetValue(field, out var value))
+                        {
+                            row.Add(value as String);
+                        }
+                        else
+                        {
+                            row.Add(String.Empty);
+                        }
+                    }
+                    workItemCellsData.Add(row);
+                }
+
+                FillTable(true, workItemCellsData);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// This is similar to <see cref="FillTableWithSingleFieldWorkItems(bool, IEnumerable{WorkItem})"/>
+        /// but with this version the routine will perform a complete substitution in each cell
+        /// so you can have multiple value in cells. This is more time consuming that
+        /// <see cref="FillTableWithSingleFieldWorkItems(bool, IEnumerable{WorkItem})"/>
+        /// </summary>
+        /// <param name="skipHeader"></param>
+        /// <param name="workItems"></param>
+        /// <returns></returns>
+        public WordManipulator FillTableWithCompositeWorkItems(
+            Boolean skipHeader,
+            IEnumerable<WorkItem> workItems)
+        {
+            List<Dictionary<String, Object>> workItemCellsData = new List<Dictionary<String, Object>>();
+            List<Int32> parentList = new List<Int32>();
+            foreach (var workItem in workItems)
+            {
+                RelatedLink parentLink = GetParentLink(workItem);
+                if (parentLink != null)
+                {
+                    parentList.Add(parentLink.RelatedWorkItemId);
+                }
+            }
+
+            //ok now we need to grab all parent link, just to grab 
+            var query = $@"SELECT
+    [System.Id],
+    [System.Title]
+FROM workitems
+WHERE [System.Id] IN ({String.Join(",", parentList)})
+ORDER BY [System.Id]
+";
+            //ok, query all the parents
+            var parentWorkItems = ConnectionManager.Instance.WorkItemStore.Query(query)
+                .OfType<WorkItem>()
+                .ToDictionary(w => w.Id);
+
+            foreach (var workItem in workItems)
+            {
+                var parameters = CreateDictionaryFromWorkItem(workItem);
+                RelatedLink parentLink = GetParentLink(workItem);
+                if (parentWorkItems.TryGetValue(parentLink?.RelatedWorkItemId ?? 0, out var parent))
+                {
+                    parameters["parent.title"] = parent.Title;
+                    parameters["parent.id"] = parent.Id;
+                }
+                workItemCellsData.Add(parameters);
+            }
+            return FillCompositeTable(skipHeader, workItemCellsData);
+        }
+
+        private static RelatedLink GetParentLink(WorkItem workItem)
+        {
+            return workItem
+                                .Links
+                                .OfType<RelatedLink>()
+                                .SingleOrDefault(l => l.LinkTypeEnd.Name == "Parent");
+        }
 
         #endregion
 

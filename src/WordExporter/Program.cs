@@ -1,20 +1,23 @@
 ﻿using CommandLine;
 using Microsoft.TeamFoundation.VersionControl.Client;
+using Microsoft.TeamFoundation.WorkItemTracking.Client;
 using Serilog;
 using Serilog.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using WordExporter.Core;
+using WordExporter.Core.Support;
+using WordExporter.Core.Templates;
 using WordExporter.Core.WordManipulation;
 using WordExporter.Core.WorkItems;
 using WordExporter.Support;
 
 namespace WordExporter
 {
-    class Program
+    public static class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             ConfigureSerilog();
 
@@ -31,26 +34,18 @@ namespace WordExporter
                 return;
             }
 
-            Connection connection = new Connection(options.ServiceAddress, options.GetAccessToken());
+            ConnectionManager connection = new ConnectionManager(options.ServiceAddress, options.GetAccessToken());
 
-            DumpAllTeamProjects(connection);
+            //DumpAllTeamProjects(connection);
 
-            WorkItemManger workItemManger = new WorkItemManger(connection);
-            workItemManger.SetTeamProject("zoalord insurance");
-            var workItems = workItemManger.LoadAllWorkItemForAreaAndIteration(
-                options.AreaPath,
-                options.IterationPath);
-
-            var fileName = Path.GetTempFileName() + ".docx";
-            using (WordManipulator manipulator = new WordManipulator(fileName, true))
+            if (String.IsNullOrEmpty(options.TemplateFolder))
             {
-                foreach (var workItem in workItems)
-                {
-                    manipulator.InsertWorkItem(workItem, @"Templates\WorkItem.docx", true);
-                }
+                PerformStandardIterationExport(connection);
             }
-
-            System.Diagnostics.Process.Start(fileName);
+            else
+            {
+                PerformTemplateExport(connection);
+            }
 
             if (Environment.UserInteractive)
             {
@@ -59,7 +54,71 @@ namespace WordExporter
             }
         }
 
-        private static void DumpAllTeamProjects(Connection connection)
+        private static void PerformTemplateExport(ConnectionManager connection)
+        {
+            var wordFolderManager = new WordTemplateFolderManager(options.TemplateFolder);
+            var executor = new TemplateExecutor(wordFolderManager);
+
+            //now we need to ask user parameter value
+            Dictionary<string, Object> parameters = new Dictionary<string, object>();
+            foreach (var parameterName in wordFolderManager.TemplateDefinition.Parameters.ParameterNames)
+            {
+                Console.Write($"Parameter {parameterName}:");
+                parameters[parameterName] = Console.ReadLine();
+            }
+
+            var tempFileName = Path.GetTempPath() + Guid.NewGuid().ToString() + ".docx";
+            executor.GenerateWordFile(tempFileName, connection, options.TeamProject, parameters);
+            System.Diagnostics.Process.Start(tempFileName);
+        }
+
+        private static void PerformStandardIterationExport(ConnectionManager connection)
+        {
+            WorkItemManger workItemManger = new WorkItemManger(connection);
+            workItemManger.SetTeamProject(options.TeamProject);
+            var workItems = workItemManger.LoadAllWorkItemForAreaAndIteration(
+                options.AreaPath,
+                options.IterationPath);
+
+            var fileName = Path.GetTempFileName() + ".docx";
+            var templateManager = new TemplateManager("Templates");
+            var template = templateManager.GetWordDefinitionTemplate(options.TemplateName);
+            using (WordManipulator manipulator = new WordManipulator(fileName, true))
+            {
+                AddTableContent(manipulator, workItems, template);
+                foreach (var workItem in workItems)
+                {
+                    manipulator.InsertWorkItem(workItem, template.GetTemplateFor(workItem.Type.Name), true);
+                }
+            }
+
+            System.Diagnostics.Process.Start(fileName);
+        }
+
+        private static void AddTableContent(
+            WordManipulator manipulator,
+            List<WorkItem> workItems,
+            WordTemplateFolderManager template)
+        {
+            string tableFileName = template.GetTable("A", true);
+            using (var tableManipulator = new WordManipulator(tableFileName, false))
+            {
+                List<List<String>> table = new List<List<string>>();
+                foreach (WorkItem workItem in workItems)
+                {
+                    List<String> row = new List<string>();
+                    row.Add(workItem.Id.ToString());
+                    row.Add(workItem.GetFieldValueAsString("System.AssignedTo"));
+                    row.Add(workItem.AttachedFileCount.ToString());
+                    table.Add(row);
+                }
+                tableManipulator.FillTable(true, table);
+            }
+            manipulator.AppendOtherWordFile(tableFileName);
+            File.Delete(tableFileName);
+        }
+
+        private static void DumpAllTeamProjects(ConnectionManager connection)
         {
             foreach (var tpname in connection.GetTeamProjectsNames())
             {
@@ -76,7 +135,6 @@ namespace WordExporter
 
         private static void HandleParseError(IEnumerable<Error> errs)
         {
-
         }
 
         private static void ConfigureSerilog()
