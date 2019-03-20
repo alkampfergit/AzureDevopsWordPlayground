@@ -126,7 +126,7 @@ namespace WordExporter.Core.WordManipulation
             startingParameters = startingParameters ?? new Dictionary<string, object>();
             using (WordManipulator m = new WordManipulator(tempFile, false))
             {
-                Dictionary<string, object> tokenList = CreateDictionaryFromWorkItem(workItem);
+                Dictionary<string, object> tokenList = workItem.CreateDictionaryFromWorkItem();
                 if (startingParameters != null)
                 {
                     foreach (var parameter in startingParameters)
@@ -139,81 +139,6 @@ namespace WordExporter.Core.WordManipulation
 
             AppendOtherWordFile(tempFile, insertPageBreak);
             File.Delete(tempFile);
-        }
-
-        /// <summary>
-        /// Simply create a dictionary of substitution values from all the fields
-        /// of the work item.
-        /// </summary>
-        /// <param name="workItem"></param>
-        /// <returns></returns>
-        private Dictionary<String, Object> CreateDictionaryFromWorkItem(WorkItem workItem)
-        {
-            var retValue = new Dictionary<String, Object>(StringComparer.OrdinalIgnoreCase);
-            retValue["title"] = workItem.Title;
-            retValue["id"] = workItem.Id;
-            //Some help to avoid forcing the user to use System.AssignedTo etc for most commonly used fields.
-            retValue["description"] = new HtmlSubstitution(workItem.EmbedHtmlContent(workItem.Description));
-            retValue["assignedto"] = workItem.Fields["System.AssignedTo"].Value?.ToString() ?? String.Empty;
-            retValue["createdby"] = workItem.Fields["System.CreatedBy"].Value?.ToString() ?? String.Empty;
-
-            HashSet<String> specialFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "description",
-            };
-
-            //All the fields will be set in raw format.
-            foreach (Field field in workItem.Fields)
-            {
-                if (specialFields.Contains(field.Name))
-                    continue; //This is a special field, ignore.
-
-                var value = GetValue(field);
-
-                retValue[field.Name] = field.Value?.ToString() ?? String.Empty;
-                retValue[field.ReferenceName] = field.Value?.ToString() ?? String.Empty;
-            }
-
-            //ok some of the historical value could be of interests, as an example the last user timestamp for each state change
-            //is an information that can be interesting
-            if (workItem.Revisions.Count > 0)
-            {
-                foreach (Revision revision in workItem.Revisions)
-                {
-                    var fieldsChanged = revision
-                        .Fields
-                        .OfType<Field>()
-                        .Where(f => f.IsChangedInRevision)
-                        .ToList();
-                    var changedBy = revision.Fields["Changed By"].Value;
-                    var changedDate = revision.Fields["Changed Date"].Value;
-                    foreach (var field in fieldsChanged)
-                    {
-                        if (field.ReferenceName.Equals("system.state", StringComparison.OrdinalIgnoreCase))
-                        {
-                            retValue[$"statechange.{field.Value.ToString().ToLower()}.author"] = changedBy;
-                            retValue[$"statechange.{field.Value.ToString().ToLower()}.date"] = ((DateTime) changedDate).ToShortDateString();
-                        }
-                        else if (field.ReferenceName.Equals("system.areapath", StringComparison.OrdinalIgnoreCase))
-                        {
-                            retValue[$"lastareapathchange.author"] = changedBy;
-                            retValue[$"lastareapathchange.date"] = ((DateTime)changedDate).ToShortDateString();
-                        }
-                    }
-                }
-            }
-            return retValue;
-        }
-
-        private String GetValue(Field field)
-        {
-            if (field.Value == null)
-                return String.Empty;
-
-            if (field.Value is DateTime dateTime)
-                return dateTime.ToShortDateString();
-
-            return field.Value.ToString();
         }
 
         #endregion
@@ -809,7 +734,7 @@ namespace WordExporter.Core.WordManipulation
                 foreach (var workItem in workItems)
                 {
                     List<String> row = new List<string>();
-                    var properties = this.CreateDictionaryFromWorkItem(workItem);
+                    var properties = workItem.CreateDictionaryFromWorkItem();
                     foreach (var field in cellFields)
                     {
                         if (properties.TryGetValue(field, out var value))
@@ -842,6 +767,9 @@ namespace WordExporter.Core.WordManipulation
             Boolean skipHeader,
             IEnumerable<WorkItem> workItems)
         {
+            if (!workItems.Any())
+                return this;
+
             List<Dictionary<String, Object>> workItemCellsData = new List<Dictionary<String, Object>>();
             List<Int32> parentList = new List<Int32>();
             foreach (var workItem in workItems)
@@ -868,7 +796,7 @@ ORDER BY [System.Id]
 
             foreach (var workItem in workItems)
             {
-                var parameters = CreateDictionaryFromWorkItem(workItem);
+                var parameters = workItem.CreateDictionaryFromWorkItem();
                 RelatedLink parentLink = GetParentLink(workItem);
                 if (parentWorkItems.TryGetValue(parentLink?.RelatedWorkItemId ?? 0, out var parent))
                 {
@@ -883,9 +811,9 @@ ORDER BY [System.Id]
         private static RelatedLink GetParentLink(WorkItem workItem)
         {
             return workItem
-                                .Links
-                                .OfType<RelatedLink>()
-                                .SingleOrDefault(l => l.LinkTypeEnd.Name == "Parent");
+                .Links
+                .OfType<RelatedLink>()
+                .SingleOrDefault(l => l.LinkTypeEnd.Name == "Parent");
         }
 
         #endregion

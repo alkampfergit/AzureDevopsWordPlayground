@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using WordExporter.Core.Support;
 using WordExporter.Core.WordManipulation;
 using WordExporter.Core.WorkItems;
@@ -81,11 +82,11 @@ namespace WordExporter.Core.Templates.Parser
             WordTemplateFolderManager wordTemplateFolderManager,
             string teamProjectName)
         {
+            WorkItemManger workItemManger = PrepareWorkItemManager(connectionManager, teamProjectName);
+
             parameters = parameters.ToDictionary(k => k.Key, v => v.Value); //clone
             //If we do not have query parameters we have a single query or we can have parametrized query with iterationPath
             var queries = PrepareQueries(parameters);
-            WorkItemManger workItemManger = new WorkItemManger(connectionManager);
-            workItemManger.SetTeamProject(teamProjectName);
 
             foreach (var query in queries)
             {
@@ -122,6 +123,40 @@ namespace WordExporter.Core.Templates.Parser
             }
 
             base.Assemble(manipulator, parameters, connectionManager, wordTemplateFolderManager, teamProjectName);
+        }
+
+        public override void Dump(
+            StringBuilder stringBuilder,
+            Dictionary<string, object> parameters,
+            ConnectionManager connectionManager,
+            WordTemplateFolderManager wordTemplateFolderManager,
+            string teamProjectName)
+        {
+            WorkItemManger workItemManger = PrepareWorkItemManager(connectionManager, teamProjectName);
+
+            parameters = parameters.ToDictionary(k => k.Key, v => v.Value); //clone
+            //If we do not have query parameters we have a single query or we can have parametrized query with iterationPath
+            var queries = PrepareQueries(parameters);
+
+            foreach (var query in queries)
+            {
+                var workItems = workItemManger.ExecuteQuery(query).Take(Limit);
+                foreach (var workItem in workItems)
+                {
+                    var values = workItem.CreateDictionaryFromWorkItem();
+                    foreach (var value in values)
+                    {
+                        stringBuilder.AppendLine($"{value.Key.PadRight(50, ' ')}={value.Value}");
+                    }
+                }
+            }
+        }
+
+        private static WorkItemManger PrepareWorkItemManager(ConnectionManager connectionManager, string teamProjectName)
+        {
+            WorkItemManger workItemManger = new WorkItemManger(connectionManager);
+            workItemManger.SetTeamProject(teamProjectName);
+            return workItemManger;
         }
 
         private List<String> PrepareQueries(Dictionary<string, object> parameters)

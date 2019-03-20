@@ -3,14 +3,89 @@ using Microsoft.TeamFoundation.WorkItemTracking.Client;
 using Microsoft.TeamFoundation.WorkItemTracking.Proxy;
 using Serilog;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using WordExporter.Core.WordManipulation.Support;
 
 namespace WordExporter.Core.WorkItems
 {
     public static class Extensions
     {
+        /// <summary>
+        /// Simply create a dictionary of substitution values from all the fields
+        /// of the work item.
+        /// </summary>
+        /// <param name="workItem"></param>
+        /// <returns></returns>
+        public static Dictionary<String, Object> CreateDictionaryFromWorkItem(this WorkItem workItem)
+        {
+            var retValue = new Dictionary<String, Object>(StringComparer.OrdinalIgnoreCase);
+            retValue["title"] = workItem.Title;
+            retValue["id"] = workItem.Id;
+            //Some help to avoid forcing the user to use System.AssignedTo etc for most commonly used fields.
+            retValue["description"] = new HtmlSubstitution(workItem.EmbedHtmlContent(workItem.Description));
+            retValue["assignedto"] = workItem.Fields["System.AssignedTo"].Value?.ToString() ?? String.Empty;
+            retValue["createdby"] = workItem.Fields["System.CreatedBy"].Value?.ToString() ?? String.Empty;
+
+            HashSet<String> specialFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "description",
+            };
+
+            //All the fields will be set in raw format.
+            foreach (Field field in workItem.Fields)
+            {
+                if (specialFields.Contains(field.Name))
+                    continue; //This is a special field, ignore.
+
+                retValue[field.Name] = retValue[field.ReferenceName] = GetValue(field);
+            }
+
+            //ok some of the historical value could be of interests, as an example the last user timestamp for each state change
+            //is an information that can be interesting
+            if (workItem.Revisions.Count > 0)
+            {
+                foreach (Revision revision in workItem.Revisions)
+                {
+                    var fieldsChanged = revision
+                        .Fields
+                        .OfType<Field>()
+                        .Where(f => f.IsChangedInRevision)
+                        .ToList();
+                    var changedBy = revision.Fields["Changed By"].Value;
+                    var changedDate = revision.Fields["Changed Date"].Value;
+                    foreach (var field in fieldsChanged)
+                    {
+                        if (field.ReferenceName.Equals("system.state", StringComparison.OrdinalIgnoreCase))
+                        {
+                            retValue[$"statechange.{field.Value.ToString().ToLower()}.author"] = changedBy;
+                            retValue[$"statechange.{field.Value.ToString().ToLower()}.date"] = ((DateTime)changedDate).ToShortDateString();
+                        }
+                        else if (field.ReferenceName.Equals("system.areapath", StringComparison.OrdinalIgnoreCase))
+                        {
+                            retValue[$"lastareapathchange.author"] = changedBy;
+                            retValue[$"lastareapathchange.date"] = ((DateTime)changedDate).ToShortDateString();
+                        }
+                    }
+                }
+            }
+            return retValue;
+        }
+
+
+        public static String GetValue(this Field field)
+        {
+            if (field.Value == null)
+                return String.Empty;
+
+            if (field.Value is DateTime dateTime)
+                return dateTime.ToShortDateString();
+
+            return field.Value.ToString();
+        }
+
         public static String EmbedHtmlContent(this WorkItem workItem, String htmlContent)
         {
             HtmlDocument doc = new HtmlDocument();

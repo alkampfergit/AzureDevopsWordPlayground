@@ -1,14 +1,10 @@
 using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.Command;
-using Microsoft.TeamFoundation.Client;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.Core.WebApi.Types;
 using Microsoft.TeamFoundation.Work.WebApi;
-using Microsoft.TeamFoundation.WorkItemTracking.Client;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
-using Microsoft.VisualStudio.Services.Client;
-using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
 using Serilog;
 using System;
@@ -16,11 +12,13 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using WordExporter.Core;
 using WordExporter.Core.Templates;
 using WordExporter.Core.WordManipulation;
+using WordExporter.Core.WorkItems;
 using WordExporter.UI.Support;
 using WordExporter.UI.ViewModel.SubModels;
 
@@ -62,6 +60,7 @@ namespace WordExporter.UI.ViewModel
             Connect = new RelayCommand(ConnectMethod);
             GetQueries = new RelayCommand(GetQueriesMethod);
             Export = new RelayCommand(ExportMethod);
+            Dump = new RelayCommand(DumpMethod);
             GetIterations = new RelayCommand(GetIterationsMethod);
             Address = StatePersister.Instance.Load<String>("main.Address") ?? String.Empty;
         }
@@ -278,6 +277,8 @@ namespace WordExporter.UI.ViewModel
 
         public ICommand Export { get; private set; }
 
+        public ICommand Dump { get; private set; }
+
         public ICommand GetIterations { get; private set; }
 
         private async void ConnectMethod()
@@ -366,7 +367,7 @@ namespace WordExporter.UI.ViewModel
         public async void GetQueriesMethod()
         {
             WorkItemTrackingHttpClient witClient = ConnectionManager.Instance.GetClient<WorkItemTrackingHttpClient>();
-            var queries =await witClient.GetQueriesAsync(SelectedTeamProject.Name, depth: 2, expand: QueryExpand.Wiql);
+            var queries = await witClient.GetQueriesAsync(SelectedTeamProject.Name, depth: 2, expand: QueryExpand.Wiql);
             Queries.Clear();
             await PopulateQueries(String.Empty, witClient, queries);
         }
@@ -375,7 +376,9 @@ namespace WordExporter.UI.ViewModel
         {
             Iterations.Clear();
             if (SelectedTeamProject == null)
+            {
                 return;
+            }
 
             Status = "Getting iterations for team project " + SelectedTeamProject.Name;
 
@@ -392,13 +395,19 @@ namespace WordExporter.UI.ViewModel
         public void ExportMethod()
         {
             if (TemplateManager == null)
+            {
                 return;
+            }
 
             if (SelectedTemplate == null)
+            {
                 return;
+            }
 
             if (ConnectionManager.Instance == null)
+            {
                 return;
+            }
 
             try
             {
@@ -410,6 +419,68 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        public void DumpMethod()
+        {
+            if (TemplateManager == null)
+            {
+                return;
+            }
+
+            if (SelectedTemplate == null)
+            {
+                return;
+            }
+
+            if (ConnectionManager.Instance == null)
+            {
+                return;
+            }
+
+            try
+            {
+                InnerExecuteDump();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error exporting template: {message}", ex.Message);
+            }
+        }
+
+        private void InnerExecuteDump()
+        {
+            var fileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()) + ".txt";
+            if (SelectedTemplate.IsScriptTemplate)
+            {
+                var executor = new TemplateExecutor(SelectedTemplate.WordTemplateFolderManager);
+
+                //now we need to ask user parameter value
+                Dictionary<string, object> parameters = PrepareUserParameters();
+                executor.DumpWorkItem(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
+            }
+            else
+            {
+                var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
+                if (selected == null || selected.Count == 0)
+                {
+                    return;
+                }
+
+                var sb = new StringBuilder();
+                foreach (var workItemResult in selected)
+                {
+                    var workItem = workItemResult.WorkItem;
+                    var values = workItem.CreateDictionaryFromWorkItem();
+                    foreach (var value in values)
+                    {
+                        sb.AppendLine($"{value.Key.PadRight(50, ' ')}={value.Value}");
+                    }
+                    File.WriteAllText(fileName, sb.ToString());
+                }
+
+            }
+            System.Diagnostics.Process.Start(fileName);
+        }
+
         private void InnerExecuteExport()
         {
             var fileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()) + ".docx";
@@ -418,13 +489,7 @@ namespace WordExporter.UI.ViewModel
                 var executor = new TemplateExecutor(SelectedTemplate.WordTemplateFolderManager);
 
                 //now we need to ask user parameter value
-                Dictionary<string, Object> parameters = new Dictionary<string, object>();
-                foreach (var parameter in Parameters)
-                {
-                    parameters[parameter.Name] = parameter.Value;
-                }
-                List<String> iterations = Iterations.Where(i => i.Selected).Select(i => i.Path).ToList();
-                parameters["iterations"] = iterations;
+                Dictionary<string, object> parameters = PrepareUserParameters();
 
                 executor.GenerateWordFile(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
             }
@@ -432,7 +497,9 @@ namespace WordExporter.UI.ViewModel
             {
                 var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
                 if (selected == null || selected.Count == 0)
+                {
                     return;
+                }
 
                 var template = SelectedTemplate.WordTemplateFolderManager;
                 using (WordManipulator manipulator = new WordManipulator(fileName, true))
@@ -445,6 +512,18 @@ namespace WordExporter.UI.ViewModel
                 }
             }
             System.Diagnostics.Process.Start(fileName);
+        }
+
+        private Dictionary<string, object> PrepareUserParameters()
+        {
+            Dictionary<string, Object> parameters = new Dictionary<string, object>();
+            foreach (var parameter in Parameters)
+            {
+                parameters[parameter.Name] = parameter.Value;
+            }
+            List<String> iterations = Iterations.Where(i => i.Selected).Select(i => i.Path).ToList();
+            parameters["iterations"] = iterations;
+            return parameters;
         }
 
         private async Task PopulateQueries(String actualPath, WorkItemTrackingHttpClient witClient, IEnumerable<QueryHierarchyItem> queries)
@@ -476,7 +555,9 @@ namespace WordExporter.UI.ViewModel
         {
             Parameters.Clear();
             if (SelectedTemplate == null)
+            {
                 return;
+            }
 
             if (SelectedTemplate.IsScriptTemplate)
             {

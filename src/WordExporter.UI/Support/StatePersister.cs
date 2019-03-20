@@ -18,7 +18,8 @@ namespace WordExporter.UI.Support
 
         private StatePersister()
         {
-             _configFile = new FileInfo("state.json");
+            var fileName = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "wordexporter.ui.json";
+             _configFile = new FileInfo(fileName);
             if (!_configFile.Exists)
             {
                 _config = new Dictionary<string, object>();

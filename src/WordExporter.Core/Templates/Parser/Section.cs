@@ -49,5 +49,24 @@ namespace WordExporter.Core.Templates.Parser
         {
             //Do nothing.
         }
+
+        /// <summary>
+        /// <para>Can simply dump information for work items, field etc. implementing
+        /// this method is completely optional</para>
+        /// </summary>
+        /// <param name="stringBuilder">A string builder to accumulate all the
+        /// data for dumping information</param>
+        /// <param name="parameters"></param>
+        /// <param name="connectionManager"></param>
+        /// <param name="teamProjectName"></param>
+        public virtual void Dump(
+            StringBuilder stringBuilder,
+            Dictionary<string, Object> parameters,
+            ConnectionManager connectionManager,
+            WordTemplateFolderManager wordTemplateFolderManager,
+            string teamProjectName)
+        {
+            //Do nothing.
+        }
     }
 }
