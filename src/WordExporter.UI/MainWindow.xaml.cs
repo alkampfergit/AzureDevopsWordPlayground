@@ -19,11 +19,11 @@ namespace WordExporter.UI
                 .Enrich.WithExceptionDetails()
                 .MinimumLevel.Debug()
                 .WriteTo.File(
-                    "logs.txt",
+                    "logs\\logs.txt",
                      rollingInterval: RollingInterval.Day
                 )
                 .WriteTo.File(
-                    "errors.txt",
+                    "logs\\errors.txt",
                      rollingInterval: RollingInterval.Day,
                      restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error
                 )

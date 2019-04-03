@@ -271,6 +271,20 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        public Boolean _generatePdf;
+
+        public Boolean GeneratePdf
+        {
+            get
+            {
+                return _generatePdf;
+            }
+            set
+            {
+                Set<Boolean>(() => this.GeneratePdf, ref _generatePdf, value);
+            }
+        }
+
         public ICommand Connect { get; private set; }
 
         public ICommand GetQueries { get; private set; }
@@ -483,7 +497,8 @@ namespace WordExporter.UI.ViewModel
 
         private void InnerExecuteExport()
         {
-            var fileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()) + ".docx";
+            var baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            var fileName = Path.Combine(baseFolder, SelectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
             if (SelectedTemplate.IsScriptTemplate)
             {
                 var executor = new TemplateExecutor(SelectedTemplate.WordTemplateFolderManager);
@@ -511,7 +526,15 @@ namespace WordExporter.UI.ViewModel
                     }
                 }
             }
-            System.Diagnostics.Process.Start(fileName);
+            WordAutomationHelper helper = new WordAutomationHelper(fileName);
+            if (GeneratePdf)
+            {
+                var pdfFile = helper.ConvertToPdf();
+                if (!String.IsNullOrEmpty(pdfFile))
+                {
+                    System.Diagnostics.Process.Start(pdfFile);
+                }
+            }
         }
 
         private Dictionary<string, object> PrepareUserParameters()
