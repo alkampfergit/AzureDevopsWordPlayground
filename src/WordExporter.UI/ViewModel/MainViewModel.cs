@@ -526,14 +526,22 @@ namespace WordExporter.UI.ViewModel
                     }
                 }
             }
-            WordAutomationHelper helper = new WordAutomationHelper(fileName);
+
             if (GeneratePdf)
             {
-                var pdfFile = helper.ConvertToPdf();
-                if (!String.IsNullOrEmpty(pdfFile))
+                using (WordAutomationHelper helper = new WordAutomationHelper(fileName, false))
                 {
-                    System.Diagnostics.Process.Start(pdfFile);
+                    var pdfFile = helper.ConvertToPdf();
+                    if (!String.IsNullOrEmpty(pdfFile))
+                    {
+                        System.Diagnostics.Process.Start(pdfFile);
+                    }
+                    helper.Close();
                 }
+            }
+            else
+            {
+                System.Diagnostics.Process.Start(fileName);
             }
         }
 

@@ -5,18 +5,18 @@ using Serilog;
 
 namespace WordExporter.Core.WordManipulation
 {
-    public class WordAutomationHelper
+    public class WordAutomationHelper : IDisposable
     {
         private readonly String _fileName;
         private readonly Application app;
         private readonly Document doc;
 
-        public WordAutomationHelper(String fileName)
+        public WordAutomationHelper(String fileName, Boolean visibility)
         {
             _fileName = fileName;
             app = new Application();
             app.DisplayAlerts = WdAlertLevel.wdAlertsNone;
-            app.Visible = true;
+            app.Visible = visibility;
 
             Log.Debug("Opening {0} in office", _fileName);
             //it is importantì
@@ -38,17 +38,20 @@ namespace WordExporter.Core.WordManipulation
             catch (Exception ex)
             {
                 Log.Error(ex, "Error converting {0} - {1}", _fileName, ex.Message);
-
-                if (doc != null)
-                {
-                    this.Close(doc);
-                }
-                if (app != null)
-                {
-                    this.Close(app);
-                }
             }
             return null;
+        }
+
+        public void Close()
+        {
+            if (doc != null)
+            {
+                this.Close(doc);
+            }
+            if (app != null)
+            {
+                this.Close(app);
+            }
         }
 
         private void Close(Application app)
@@ -75,5 +78,27 @@ namespace WordExporter.Core.WordManipulation
                 Log.Error(ex, "Unable to close document {0}", ex.Message);
             }
         }
+
+        #region IDisposable Support
+
+        private bool disposedValue; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    Close();
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+        #endregion
     }
 }
