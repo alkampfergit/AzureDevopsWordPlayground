@@ -73,7 +73,7 @@ namespace WordExporter.Core.Templates.Parser
 
         #region syntax
 
-        public static Parser<QuerySection> Parser =
+        public readonly static Parser<QuerySection> Parser =
           from keyValueList in ConfigurationParser.KeyValueList
           select new QuerySection(keyValueList);
 

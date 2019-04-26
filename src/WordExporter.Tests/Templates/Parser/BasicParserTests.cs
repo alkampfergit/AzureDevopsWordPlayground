@@ -17,7 +17,23 @@ namespace WordExporter.Tests.Templates.Parser
 @"[[parameters]]
     parama
     paramb");
-            Assert.That(def.Parameters, Is.Not.Null);
+            Assert.That(def.ParameterSection, Is.Not.Null);
+        }
+
+        [Test]
+        public void Basic_Parsing_of_Parameters_with_default_value_returns_parameter_section()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[parameters]]
+    parama=2017-01-01
+    paramb=2019-04-31");
+            Assert.That(def.ParameterSection, Is.Not.Null);
+            var paramA = def.ParameterSection.Parameters["parama"];
+            Assert.That(paramA, Is.EqualTo("2017-01-01"));
+
+            var paramB = def.ParameterSection.Parameters["parama"];
+            Assert.That(paramB, Is.EqualTo("2019-04-31"));
         }
 
         [Test]
@@ -27,7 +43,7 @@ namespace WordExporter.Tests.Templates.Parser
             TemplateDefinition def = sut.ParseTemplateDefinition(
 @"[[arrayParameters]]
     tags");
-            Assert.That(def.ArrayParameters, Is.Not.Null);
+            Assert.That(def.ArrayParameterSection, Is.Not.Null);
         }
 
         [Test]
@@ -112,7 +128,7 @@ namespace WordExporter.Tests.Templates.Parser
     parama
     paramb
 ");
-            Assert.That(def.Parameters.ParameterNames, Is.EquivalentTo(new[] { "parama", "paramb" }));
+            Assert.That(def.ParameterSection.Parameters, Is.EquivalentTo(new[] { "parama", "paramb" }));
         }
 
         [Test]

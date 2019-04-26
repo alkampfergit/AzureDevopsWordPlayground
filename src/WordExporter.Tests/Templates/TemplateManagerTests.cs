@@ -63,7 +63,7 @@ namespace WordExporter.Tests.Templates
             Assert.That(template, Is.Not.Null);
             Assert.That(template.TemplateDefinition, Is.Not.Null);
             Assert.That(template.TemplateDefinition.AllSections.Length, Is.EqualTo(2));
-            Assert.That(template.TemplateDefinition.Parameters.ParameterNames, Is.EquivalentTo(new[] { "test", "blah" }));
+            Assert.That(template.TemplateDefinition.ParameterSection.Parameters, Is.EquivalentTo(new[] { "test", "blah" }));
         }
 
         [Test]

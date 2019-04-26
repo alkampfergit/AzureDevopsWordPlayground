@@ -17,6 +17,7 @@ namespace WordExporter
 {
     public static class Program
     {
+        [STAThread]
         private static void Main(string[] args)
         {
             ConfigureSerilog();
@@ -61,7 +62,7 @@ namespace WordExporter
 
             //now we need to ask user parameter value
             Dictionary<string, Object> parameters = new Dictionary<string, object>();
-            foreach (var parameterName in wordFolderManager.TemplateDefinition.Parameters.ParameterNames)
+            foreach (var parameterName in wordFolderManager.TemplateDefinition.ParameterSection.Parameters.Keys)
             {
                 Console.Write($"Parameter {parameterName}:");
                 parameters[parameterName] = Console.ReadLine();

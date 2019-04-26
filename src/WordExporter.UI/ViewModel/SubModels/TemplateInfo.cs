@@ -18,8 +18,8 @@ namespace WordExporter.UI.ViewModel.SubModels
             if (IsScriptTemplate)
             {
                 //copy list of parameters
-                Parameters = wordTemplateFolderManager.TemplateDefinition.Parameters.ParameterNames.ToList();
-                ArrayParameters = wordTemplateFolderManager.TemplateDefinition.ArrayParameters?.ParameterNames.ToList();
+                Parameters = wordTemplateFolderManager.TemplateDefinition.ParameterSection.Parameters;
+                ArrayParameters = wordTemplateFolderManager.TemplateDefinition.ArrayParameterSection.ArrayParameters ?? new Dictionary<String, String>();
             }
         }
 
@@ -51,9 +51,9 @@ namespace WordExporter.UI.ViewModel.SubModels
             }
         }
 
-        private List<String> _parameters;
+        private Dictionary<String, String> _parameters;
 
-        public List<String> Parameters
+        public Dictionary<String, String> Parameters
         {
             get
             {
@@ -61,13 +61,13 @@ namespace WordExporter.UI.ViewModel.SubModels
             }
             set
             {
-                Set<List<String>>(() => this.Parameters, ref _parameters, value);
+                Set<Dictionary<String, String>>(() => this.Parameters, ref _parameters, value);
             }
         }
 
-        private List<String> _arrayParameters;
+        private Dictionary<String, String> _arrayParameters;
 
-        public List<String> ArrayParameters
+        public Dictionary<String, String> ArrayParameters
         {
             get
             {
@@ -75,7 +75,7 @@ namespace WordExporter.UI.ViewModel.SubModels
             }
             set
             {
-                Set<List<String>>(() => this.ArrayParameters, ref _arrayParameters, value);
+                Set<Dictionary<String, String>>(() => this.ArrayParameters, ref _arrayParameters, value);
             }
         }
     }

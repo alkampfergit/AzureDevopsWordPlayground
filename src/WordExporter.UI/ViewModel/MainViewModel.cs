@@ -43,18 +43,14 @@ namespace WordExporter.UI.ViewModel
         /// </summary>
         public MainViewModel()
         {
-            if (IsInDesignMode)
-            {
-                // Code runs in Blend --> create design time data.
-            }
-            else
-            {
-                // Code runs "for real"
-            }
-
-            //TemplateFolder = Path.Combine(
-            //    Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory),
-            //    "Templates");
+            //if (IsInDesignMode)
+            //{
+            //    // Code runs in Blend --> create design time data.
+            //}
+            //else
+            //{
+            //    // Code runs "for real"
+            //}
 
             TemplateFolder = StatePersister.Instance.Load<String>("main.TemplateFolder") ?? @"C:\develop\GitHub\AzureDevopsWordPlayground\src\WordExporter\Templates";
             Connect = new RelayCommand(ConnectMethod);
@@ -317,12 +313,6 @@ namespace WordExporter.UI.ViewModel
                 Status = "Connecting";
                 var connectionManager = new ConnectionManager();
                 await connectionManager.ConnectAsync(Address);
-
-                //ProjectCollectionHttpClient projectCollectionHttpClient = connectionManager.GetClient<ProjectCollectionHttpClient>();
-                //Status = "Connected, Retrieving project collection";
-
-                //We do not need to get collectoin async, because we only want to retrieve project
-                //await GetCollectionAsync(projectCollectionHttpClient);
 
                 Status = "Connected, Retrieving Team Projects";
                 var projectHttpClient = connectionManager.GetClient<ProjectHttpClient>();
@@ -609,12 +599,12 @@ namespace WordExporter.UI.ViewModel
             {
                 foreach (var parameter in SelectedTemplate.Parameters)
                 {
-                    Parameters.Add(new ParameterViewModel(parameter));
+                    Parameters.Add(new ParameterViewModel(parameter.Key, parameter.Value));
                 }
 
                 foreach (var parameter in SelectedTemplate.ArrayParameters)
                 {
-                    ArrayParameters.Add(new ParameterViewModel(parameter));
+                    ArrayParameters.Add(new ParameterViewModel(parameter.Key, parameter.Value));
                 }
             }
         }

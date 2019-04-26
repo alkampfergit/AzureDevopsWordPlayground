@@ -9,9 +9,10 @@ namespace WordExporter.UI.ViewModel
 {
     public class ParameterViewModel : ViewModelBase
     {
-        public ParameterViewModel(String name)
+        public ParameterViewModel(String name, String value)
         {
             Name = name;
+            Value = value;
         }
 
         private String _name;
