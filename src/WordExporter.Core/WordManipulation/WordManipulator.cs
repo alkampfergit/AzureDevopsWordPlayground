@@ -781,18 +781,27 @@ namespace WordExporter.Core.WordManipulation
                 }
             }
 
-            //ok now we need to grab all parent link, just to grab 
-            var query = $@"SELECT
+            Dictionary<Int32, WorkItem> parentWorkItems;
+            if (parentList.Count > 0)
+            {
+
+                //ok now we need to grab all parent link, just to grab 
+                var query = $@"SELECT
     [System.Id],
     [System.Title]
 FROM workitems
 WHERE [System.Id] IN ({String.Join(",", parentList)})
 ORDER BY [System.Id]
 ";
-            //ok, query all the parents
-            var parentWorkItems = ConnectionManager.Instance.WorkItemStore.Query(query)
-                .OfType<WorkItem>()
-                .ToDictionary(w => w.Id);
+                //ok, query all the parents
+                parentWorkItems = ConnectionManager.Instance.WorkItemStore.Query(query)
+                    .OfType<WorkItem>()
+                    .ToDictionary(w => w.Id);
+            }
+            else
+            {
+                parentWorkItems = new Dictionary<int, WorkItem>();
+            }
 
             foreach (var workItem in workItems)
             {

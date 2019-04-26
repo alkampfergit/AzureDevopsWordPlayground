@@ -110,7 +110,7 @@
 
                 <GridSplitter Grid.Row="1" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
 
-                <DataGrid Grid.Row="0"  ItemsSource="{Binding ArrayParameters}" AutoGenerateColumns="False">
+                <DataGrid Grid.Row="2"  ItemsSource="{Binding ArrayParameters}" AutoGenerateColumns="False">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Width="300" Header="Name">
                             <DataGridTemplateColumn.CellTemplate>

@@ -32,7 +32,7 @@ namespace WordExporter.Tests.Templates.Parser
             var paramA = def.ParameterSection.Parameters["parama"];
             Assert.That(paramA, Is.EqualTo("2017-01-01"));
 
-            var paramB = def.ParameterSection.Parameters["parama"];
+            var paramB = def.ParameterSection.Parameters["paramb"];
             Assert.That(paramB, Is.EqualTo("2019-04-31"));
         }
 
@@ -43,7 +43,19 @@ namespace WordExporter.Tests.Templates.Parser
             TemplateDefinition def = sut.ParseTemplateDefinition(
 @"[[arrayParameters]]
     tags");
-            Assert.That(def.ArrayParameterSection, Is.Not.Null);
+            Assert.That(def.ArrayParameterSection.ArrayParameters.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Basic_Parsing_of_array_parameter_followed_by_other_params()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[arrayParameters]]
+    tags=te,tr,ty
+[[parameters]]
+	TargetDateStart=2019-01-01");
+            Assert.That(def.ArrayParameterSection.ArrayParameters.Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -128,7 +140,7 @@ namespace WordExporter.Tests.Templates.Parser
     parama
     paramb
 ");
-            Assert.That(def.ParameterSection.Parameters, Is.EquivalentTo(new[] { "parama", "paramb" }));
+            Assert.That(def.ParameterSection.Parameters.Keys, Is.EquivalentTo(new[] { "parama", "paramb" }));
         }
 
         [Test]

@@ -1,4 +1,5 @@
 ﻿using Microsoft.TeamFoundation.WorkItemTracking.Client;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,9 +43,17 @@ namespace WordExporter.Core.WorkItems
                 query = query.Replace("{teamProjectName}", _teamProjectName);
             }
 
-            return _connection.WorkItemStore.Query(query.ToString())
-                .OfType<WorkItem>()
-                .ToList();
+            try
+            {
+                return _connection.WorkItemStore.Query(query.ToString())
+                    .OfType<WorkItem>()
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error executing Query [{message}]\n{query}", ex.Message, query.ToString());
+                throw;
+            }
         }
     }
 }

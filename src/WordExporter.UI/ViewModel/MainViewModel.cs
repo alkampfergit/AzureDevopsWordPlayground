@@ -503,18 +503,45 @@ namespace WordExporter.UI.ViewModel
         private void InnerExecuteExport()
         {
             var baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            var fileName = Path.Combine(baseFolder, SelectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
             if (SelectedTemplate.IsScriptTemplate)
             {
-                var executor = new TemplateExecutor(SelectedTemplate.WordTemplateFolderManager);
+                if (ArrayParameters.Any())
+                {
+                    var arrayParameters = ArrayParameters.Select(p => new
+                    {
+                        Name = p.Name,
+                        Values = p.Value?.Split(',', ';').ToList() ?? new List<string>()
+                    })
+                    .ToList();
 
-                //now we need to ask user parameter value
-                Dictionary<string, object> parameters = PrepareUserParameters();
+                    Int32 maxParameterCount = arrayParameters.Max(p => p.Values.Count);
+                    StringBuilder fileSuffix = new StringBuilder();
 
-                executor.GenerateWordFile(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
+                    for (int i = 0; i < maxParameterCount; i++)
+                    {
+                        Dictionary<string, object> parameters = PrepareUserParameters();
+                        foreach (var arrayParameter in arrayParameters)
+                        {
+                            var value = arrayParameter.Values.Count > i ? arrayParameter.Values[i] : String.Empty;
+                            parameters[arrayParameter.Name] = value;
+                            fileSuffix.Append(arrayParameter.Name);
+                            fileSuffix.Append("_");
+                            fileSuffix.Append(value);
+                        }
+                        var fileName = Path.Combine(baseFolder, SelectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + "_" + fileSuffix.ToString() + ".docx";
+                        GenerateFileFromScriptTemplate(fileName, parameters);
+                    }
+                }
+                else
+                {
+                    var fileName = Path.Combine(baseFolder, SelectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
+                    Dictionary<string, object> parameters = PrepareUserParameters();
+                    GenerateFileFromScriptTemplate(fileName, parameters);
+                }
             }
             else
             {
+                var fileName = Path.Combine(baseFolder, SelectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
                 var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
                 if (selected == null || selected.Count == 0)
                 {
@@ -530,8 +557,19 @@ namespace WordExporter.UI.ViewModel
                         manipulator.InsertWorkItem(workItem, template.GetTemplateFor(workItem.Type.Name), true);
                     }
                 }
+                ManageGeneratedWordFile(fileName);
             }
+        }
 
+        private void GenerateFileFromScriptTemplate(string fileName, Dictionary<string, object> parameters)
+        {
+            var executor = new TemplateExecutor(SelectedTemplate.WordTemplateFolderManager);
+            executor.GenerateWordFile(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
+            ManageGeneratedWordFile(fileName);
+        }
+
+        private void ManageGeneratedWordFile(string fileName)
+        {
             if (GeneratePdf)
             {
                 using (WordAutomationHelper helper = new WordAutomationHelper(fileName, false))
@@ -541,7 +579,6 @@ namespace WordExporter.UI.ViewModel
                     {
                         System.Diagnostics.Process.Start(pdfFile);
                     }
-                    helper.Close();
                 }
             }
             else
@@ -590,6 +627,7 @@ namespace WordExporter.UI.ViewModel
         private void UpdateSelectionOfTemplate()
         {
             Parameters.Clear();
+            ArrayParameters.Clear();
             if (SelectedTemplate == null)
             {
                 return;

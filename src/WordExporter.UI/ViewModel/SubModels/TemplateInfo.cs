@@ -18,8 +18,8 @@ namespace WordExporter.UI.ViewModel.SubModels
             if (IsScriptTemplate)
             {
                 //copy list of parameters
-                Parameters = wordTemplateFolderManager.TemplateDefinition.ParameterSection.Parameters;
-                ArrayParameters = wordTemplateFolderManager.TemplateDefinition.ArrayParameterSection.ArrayParameters ?? new Dictionary<String, String>();
+                Parameters = wordTemplateFolderManager.TemplateDefinition?.ParameterSection.Parameters ?? new Dictionary<string, string>();
+                ArrayParameters = wordTemplateFolderManager.TemplateDefinition.ArrayParameterSection?.ArrayParameters ?? new Dictionary<String, String>();
             }
         }
 
