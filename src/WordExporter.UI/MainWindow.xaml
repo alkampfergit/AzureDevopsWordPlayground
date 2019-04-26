@@ -107,25 +107,25 @@
                         <DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />
                     </DataGrid.Columns>
                 </DataGrid>
-                <!--<ListView Grid.Row="0" ItemsSource="{Binding Parameters}" >
-                    <ListView.View>
-                        <GridView>
-
-                            <GridViewColumn Header="Name" Width="120" DisplayMemberBinding="{Binding Name}" />
-                            <GridViewColumn Header="Value" Width="auto" >
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Path=Value}" TextWrapping="Wrap" Margin="0"></TextBlock>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                        </GridView>
-                    </ListView.View>
-                </ListView>-->
 
                 <GridSplitter Grid.Row="1" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
 
-                <ListView Grid.Row="2" ItemsSource="{Binding Iterations}" >
+                <DataGrid Grid.Row="0"  ItemsSource="{Binding ArrayParameters}" AutoGenerateColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="300" Header="Name">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Label Content="{Binding Name}" Height="26" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!--IterationManagement is still not fully supported, it is left for reference-->
+                <!--<ListView Grid.Row="2" ItemsSource="{Binding Iterations}" >
                     <ListView.View>
                         <GridView>
                             <GridViewColumn>
@@ -140,7 +140,7 @@
                             <GridViewColumn Header="Path" Width="120" DisplayMemberBinding="{Binding Path}" />
                         </GridView>
                     </ListView.View>
-                </ListView>
+                </ListView>-->
             </Grid>
 
             <Grid Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource InvertAndVisibilitate}}">

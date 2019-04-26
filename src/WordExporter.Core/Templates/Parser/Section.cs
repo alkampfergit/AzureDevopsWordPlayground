@@ -20,6 +20,8 @@ namespace WordExporter.Core.Templates.Parser
             {
                 case "parameters":
                     return ParameterSection.Parser.Parse(sectionContent);
+                case "arrayParameters":
+                    return ArrayParameterSection.Parser.Parse(sectionContent);
                 case "static":
                     return StaticWordSection.Parser.Parse(sectionContent);
                 case "query":

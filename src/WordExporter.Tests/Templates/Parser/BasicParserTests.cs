@@ -21,6 +21,16 @@ namespace WordExporter.Tests.Templates.Parser
         }
 
         [Test]
+        public void Basic_Parsing_of_array_parameter()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[arrayParameters]]
+    tags");
+            Assert.That(def.ArrayParameters, Is.Not.Null);
+        }
+
+        [Test]
         public void Parsing_two_Sections()
         {
             var sut = new ConfigurationParser();
@@ -54,11 +64,13 @@ namespace WordExporter.Tests.Templates.Parser
             var sut = new ConfigurationParser();
             TemplateDefinition def = sut.ParseTemplateDefinition(
 @"[[query]]
+    name: TestQueryName
     query: ""SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'""
     template/Product Backlog Item: pbix.docx
     template/Bug: bugaa.docx
 ");
             var querySection = def.AllSections.Single() as QuerySection;
+            Assert.That(querySection.Name, Is.EqualTo("TestQueryName"));
             Assert.That(querySection.Query, Is.EqualTo("SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'"));
         }
 

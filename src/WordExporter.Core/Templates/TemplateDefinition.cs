@@ -22,6 +22,7 @@ namespace WordExporter.Core.Templates
         public TemplateDefinition(IEnumerable<Section> sections)
         {
             Parameters = sections.OfType<ParameterSection>().SingleOrDefault();
+            ArrayParameters = sections.OfType<ArrayParameterSection>().SingleOrDefault();
             AllSections = sections.ToArray();
         }
 
@@ -36,5 +37,12 @@ namespace WordExporter.Core.Templates
         /// with standard sytax {{parameter}}
         /// </summary>
         public ParameterSection Parameters { get; internal set; }
+
+        /// <summary>
+        /// Array Parameters are special parameters, the user can specify multiple values
+        /// comma or semicolon separated, and the template will be executed multiple times
+        /// once for each array parameter instance.
+        /// </summary>
+        public ArrayParameterSection ArrayParameters { get; internal set; }
     }
 }

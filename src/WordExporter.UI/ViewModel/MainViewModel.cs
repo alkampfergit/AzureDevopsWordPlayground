@@ -241,6 +241,21 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        private ObservableCollection<ParameterViewModel> _arrayParameters = new ObservableCollection<ParameterViewModel>();
+
+        public ObservableCollection<ParameterViewModel> ArrayParameters
+        {
+            get
+            {
+                return _arrayParameters;
+            }
+            set
+            {
+                _arrayParameters = value;
+                RaisePropertyChanged(nameof(ArrayParameters));
+            }
+        }
+
         private ObservableCollection<IterationsViewModel> _iterations = new ObservableCollection<IterationsViewModel>();
 
         public ObservableCollection<IterationsViewModel> Iterations
@@ -256,7 +271,7 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
-        public TemplateInfo _selectedTemplate;
+        private TemplateInfo _selectedTemplate;
 
         public TemplateInfo SelectedTemplate
         {
@@ -271,7 +286,7 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
-        public Boolean _generatePdf;
+        private Boolean _generatePdf;
 
         public Boolean GeneratePdf
         {
@@ -595,6 +610,11 @@ namespace WordExporter.UI.ViewModel
                 foreach (var parameter in SelectedTemplate.Parameters)
                 {
                     Parameters.Add(new ParameterViewModel(parameter));
+                }
+
+                foreach (var parameter in SelectedTemplate.ArrayParameters)
+                {
+                    ArrayParameters.Add(new ParameterViewModel(parameter));
                 }
             }
         }

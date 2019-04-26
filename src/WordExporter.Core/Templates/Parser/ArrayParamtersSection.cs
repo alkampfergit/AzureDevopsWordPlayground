@@ -8,9 +8,13 @@ using WordExporter.Core.WordManipulation;
 
 namespace WordExporter.Core.Templates.Parser
 {
-    public sealed class ParameterSection : Section
+    /// <summary>
+    /// Formally identical to <see cref="ParameterSection"/> but it is keep
+    /// separated to allow for explicit syntax differentiation.
+    /// </summary>
+    public sealed class ArrayParameterSection : Section
     {
-        private ParameterSection()
+        private ArrayParameterSection()
         {
         }
 
@@ -18,16 +22,16 @@ namespace WordExporter.Core.Templates.Parser
 
         #region syntax
 
-        private readonly static Parser<string> Line = Parse
+        private static readonly Parser<string> Line = Parse
             .AnyChar
             .Except(Parse.LineEnd)
             .AtLeastOnce()
             .Token()
             .Text();
 
-        public readonly static Parser<ParameterSection> Parser =
+        public readonly static Parser<ArrayParameterSection> Parser =
             from sections in Line.Many()
-            select new ParameterSection()
+            select new ArrayParameterSection()
             {
                 ParameterNames = sections.ToList()
             };

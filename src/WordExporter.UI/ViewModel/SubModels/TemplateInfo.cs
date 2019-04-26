@@ -19,6 +19,7 @@ namespace WordExporter.UI.ViewModel.SubModels
             {
                 //copy list of parameters
                 Parameters = wordTemplateFolderManager.TemplateDefinition.Parameters.ParameterNames.ToList();
+                ArrayParameters = wordTemplateFolderManager.TemplateDefinition.ArrayParameters?.ParameterNames.ToList();
             }
         }
 
@@ -61,6 +62,20 @@ namespace WordExporter.UI.ViewModel.SubModels
             set
             {
                 Set<List<String>>(() => this.Parameters, ref _parameters, value);
+            }
+        }
+
+        private List<String> _arrayParameters;
+
+        public List<String> ArrayParameters
+        {
+            get
+            {
+                return _arrayParameters;
+            }
+            set
+            {
+                Set<List<String>>(() => this.ArrayParameters, ref _arrayParameters, value);
             }
         }
     }

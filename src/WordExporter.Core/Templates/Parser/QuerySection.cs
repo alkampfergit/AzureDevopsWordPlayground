@@ -1,4 +1,5 @@
-﻿using Sprache;
+﻿using Serilog;
+using Sprache;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,7 @@ namespace WordExporter.Core.Templates.Parser
         private QuerySection(IEnumerable<KeyValue> keyValuePairList)
         {
             Query = keyValuePairList.GetStringValue("query");
+            Name = keyValuePairList.GetStringValue("name");
             foreach (var templateKeys in keyValuePairList.Where(k => k.Key
                 .StartsWith("template/"))
                 .Select(k => new
@@ -36,6 +38,8 @@ namespace WordExporter.Core.Templates.Parser
                 QueryParameters.Add(dictionary);
             }
         }
+
+        public String Name { get; private set; }
 
         public String Query { get; private set; }
 
@@ -182,7 +186,7 @@ namespace WordExporter.Core.Templates.Parser
                     else
                     {
                         //By convention we should have a list of valid iterations names inside parameters dictionary.
-                        //TODO: handle the error.
+                        Log.Error("Error handling iteration for query {name}, we have RepeatForEachIteration to true but no iteration defined", Name);
                     }
                 }
             }
