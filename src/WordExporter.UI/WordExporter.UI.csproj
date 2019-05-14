@@ -297,10 +297,12 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Support\BindingProxy.cs" />
     <Compile Include="Support\BooleanToCollapsedConverter.cs" />
     <Compile Include="Support\InvertBoolConverter.cs" />
     <Compile Include="Support\NullToVisibilityConverter.cs" />
     <Compile Include="Support\StatePersister.cs" />
+    <Compile Include="Support\StringToVisibiltyConverter.cs" />
     <Compile Include="Support\ValueConverterGroup.cs" />
     <Compile Include="ViewModel\IterationsViewModel.cs" />
     <Compile Include="ViewModel\MainViewModel.cs" />

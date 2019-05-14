@@ -91,10 +91,16 @@
                     <RowDefinition></RowDefinition>
                     <RowDefinition Height="4"></RowDefinition>
                     <RowDefinition></RowDefinition>
+                    <!--<RowDefinition Height="4"></RowDefinition>
+                    <RowDefinition></RowDefinition>-->
                 </Grid.RowDefinitions>
 
-                <!--<Button Grid.Row="0" Command="{Binding GetIterations}" Content="Load all team project iterations" />-->
+                <!--<Button Grid.Row="0" Command="{Binding GetIterations}" Content="Load all team project 
+                " />-->
                 <DataGrid Grid.Row="0"  ItemsSource="{Binding Parameters}" AutoGenerateColumns="False">
+                    <DataGrid.Resources>
+                        <support:BindingProxy x:Key="proxy" Data="{Binding}" />
+                    </DataGrid.Resources>
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Width="300" Header="Name">
                             <DataGridTemplateColumn.CellTemplate>
@@ -109,17 +115,28 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Grid >
-                                        <TextBox 
-                                            Text="{Binding Value}" 
+                                        <Grid Visibility="{Binding Type, Converter={support:StringToVisibiltyConverter Value=string }}">
+                                            <!--This area is for string type.-->
+                                            <TextBox 
+                                            Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                                  HorizontalAlignment="Stretch"
                                                  Visibility="{Binding HasAllowedValues, Converter={StaticResource InvertAndVisibilitate }}" />
 
-                                        <ComboBox SelectedValue="{Binding Value}" 
+                                            <ComboBox SelectedValue="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                                   ItemsSource="{Binding AllowedValues}"
                                                   HorizontalAlignment="Stretch"
                                                    Visibility="{Binding HasAllowedValues, Converter={StaticResource booleanToVisibilityConverter }}"
                                                   />
+                                        </Grid>
+                                        <Grid Visibility="{Binding Type, Converter={support:StringToVisibiltyConverter Value=iteration }}">
+                                            <!--This area is for string type.-->
 
+                                            <ComboBox SelectedValue="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                  DisplayMemberPath="Path"
+                                                  SelectedValuePath="Path"
+                                                  ItemsSource="{Binding Data.Iterations, Source={StaticResource proxy} }"
+                                                  HorizontalAlignment="Stretch" />
+                                        </Grid>
                                     </Grid>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -143,8 +160,9 @@
                     </DataGrid.Columns>
                 </DataGrid>
 
-                <!--IterationManagement is still not fully supported, it is left for reference-->
-                <!--<ListView Grid.Row="2" ItemsSource="{Binding Iterations}" >
+                <!--<GridSplitter Grid.Row="3" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
+
+                <ListView Grid.Row="4" ItemsSource="{Binding Iterations}" >
                     <ListView.View>
                         <GridView>
                             <GridViewColumn>

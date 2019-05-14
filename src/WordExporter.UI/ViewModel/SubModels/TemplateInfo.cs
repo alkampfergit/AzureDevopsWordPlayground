@@ -21,7 +21,7 @@ namespace WordExporter.UI.ViewModel.SubModels
                 var tdef = wordTemplateFolderManager.TemplateDefinition;
                 Parameters =
                     tdef?.ParameterSection.Parameters
-                        .Select(e => CreateParameterViewModel(tdef,e))
+                        .Select(e => CreateParameterViewModel(tdef, e))
                         .ToList()
                     ?? new List<ParameterViewModel>();
                 ArrayParameters = wordTemplateFolderManager.TemplateDefinition.ArrayParameterSection?.ArrayParameters ?? new Dictionary<String, String>();
@@ -31,12 +31,14 @@ namespace WordExporter.UI.ViewModel.SubModels
         private ParameterViewModel CreateParameterViewModel(TemplateDefinition tdef, KeyValuePair<string, string> e)
         {
             String[] allowedValues = null;
+            String type = "";
             if (tdef?.ParameterDefinition != null
                 && tdef.ParameterDefinition.TryGetValue(e.Key, out var def))
             {
                 allowedValues = def.AllowedValues;
+                type = def.Type;
             }
-            return new ParameterViewModel(e.Key, e.Value, allowedValues);
+            return new ParameterViewModel(e.Key, type, e.Value, allowedValues);
         }
 
         private Boolean _isScriptTemplate;

@@ -642,7 +642,7 @@ namespace WordExporter.UI.ViewModel
 
                 foreach (var parameter in SelectedTemplate.ArrayParameters)
                 {
-                    ArrayParameters.Add(new ParameterViewModel(parameter.Key, parameter.Value, null));
+                    ArrayParameters.Add(new ParameterViewModel(parameter.Key, "", parameter.Value, null));
                 }
             }
         }
