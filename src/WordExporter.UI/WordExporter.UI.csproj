@@ -297,15 +297,16 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Support\BooleanToCollapsedConverter.cs" />
     <Compile Include="Support\InvertBoolConverter.cs" />
     <Compile Include="Support\NullToVisibilityConverter.cs" />
     <Compile Include="Support\StatePersister.cs" />
     <Compile Include="Support\ValueConverterGroup.cs" />
     <Compile Include="ViewModel\IterationsViewModel.cs" />
     <Compile Include="ViewModel\MainViewModel.cs" />
-    <Compile Include="ViewModel\ParameterViewModel.cs" />
     <Compile Include="ViewModel\QueryResultViewModel.cs" />
     <Compile Include="ViewModel\QueryViewModel.cs" />
+    <Compile Include="ViewModel\SubModels\ParameterViewModel.cs" />
     <Compile Include="ViewModel\SubModels\TemplateInfo.cs" />
     <Compile Include="ViewModel\ViewModelLocator.cs" />
     <Page Include="MainWindow.xaml">

@@ -18,9 +18,25 @@ namespace WordExporter.UI.ViewModel.SubModels
             if (IsScriptTemplate)
             {
                 //copy list of parameters
-                Parameters = wordTemplateFolderManager.TemplateDefinition?.ParameterSection.Parameters ?? new Dictionary<string, string>();
+                var tdef = wordTemplateFolderManager.TemplateDefinition;
+                Parameters =
+                    tdef?.ParameterSection.Parameters
+                        .Select(e => CreateParameterViewModel(tdef,e))
+                        .ToList()
+                    ?? new List<ParameterViewModel>();
                 ArrayParameters = wordTemplateFolderManager.TemplateDefinition.ArrayParameterSection?.ArrayParameters ?? new Dictionary<String, String>();
             }
+        }
+
+        private ParameterViewModel CreateParameterViewModel(TemplateDefinition tdef, KeyValuePair<string, string> e)
+        {
+            String[] allowedValues = null;
+            if (tdef?.ParameterDefinition != null
+                && tdef.ParameterDefinition.TryGetValue(e.Key, out var def))
+            {
+                allowedValues = def.AllowedValues;
+            }
+            return new ParameterViewModel(e.Key, e.Value, allowedValues);
         }
 
         private Boolean _isScriptTemplate;
@@ -51,9 +67,9 @@ namespace WordExporter.UI.ViewModel.SubModels
             }
         }
 
-        private Dictionary<String, String> _parameters;
+        private List<ParameterViewModel> _parameters;
 
-        public Dictionary<String, String> Parameters
+        public List<ParameterViewModel> Parameters
         {
             get
             {
@@ -61,7 +77,7 @@ namespace WordExporter.UI.ViewModel.SubModels
             }
             set
             {
-                Set<Dictionary<String, String>>(() => this.Parameters, ref _parameters, value);
+                Set<List<ParameterViewModel>>(() => this.Parameters, ref _parameters, value);
             }
         }
 

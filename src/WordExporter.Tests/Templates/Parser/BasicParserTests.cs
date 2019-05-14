@@ -37,6 +37,23 @@ namespace WordExporter.Tests.Templates.Parser
         }
 
         [Test]
+        public void Basic_Parsing_of_Parameters_with_allowed_values()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[parameterDefinition]]
+    parama=string/A|B|C
+    paramb=datetime");
+            Assert.That(def.ParameterDefinition, Is.Not.Null);
+            var paramA = def.ParameterDefinition["parama"];
+            Assert.That(paramA.Type, Is.EqualTo("string"));
+            Assert.That(paramA.AllowedValues, Is.EquivalentTo(new[] { "A","B", "C"}));
+
+            var paramb = def.ParameterDefinition["paramb"];
+            Assert.That(paramb.Type, Is.EqualTo("datetime"));
+        }
+
+        [Test]
         public void Basic_Parsing_of_array_parameter()
         {
             var sut = new ConfigurationParser();

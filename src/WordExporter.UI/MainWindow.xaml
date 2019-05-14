@@ -12,9 +12,9 @@
     <Window.Resources>
         <support:ValueConverterGroup x:Key="InvertAndVisibilitate">
             <support:InvertBoolConverter/>
-            <BooleanToVisibilityConverter/>
+            <support:BooleanToCollapsedConverter />
         </support:ValueConverterGroup>
-        <BooleanToVisibilityConverter x:Key="booleanToVisibilityConverter" />
+        <support:BooleanToCollapsedConverter x:Key="booleanToVisibilityConverter" />
         <support:NullVisibilityConverter x:Key="nullVisibilityConverter" />
     </Window.Resources>
 
@@ -103,8 +103,27 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
- 
-                        <DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />
+
+                        <!--<DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />-->
+                        <DataGridTemplateColumn Width="*" Header="Value" >
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid >
+                                        <TextBox 
+                                            Text="{Binding Value}" 
+                                                 HorizontalAlignment="Stretch"
+                                                 Visibility="{Binding HasAllowedValues, Converter={StaticResource InvertAndVisibilitate }}" />
+
+                                        <ComboBox SelectedValue="{Binding Value}" 
+                                                  ItemsSource="{Binding AllowedValues}"
+                                                  HorizontalAlignment="Stretch"
+                                                   Visibility="{Binding HasAllowedValues, Converter={StaticResource booleanToVisibilityConverter }}"
+                                                  />
+
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
 
@@ -153,7 +172,7 @@
                     <RowDefinition Height="auto"></RowDefinition>
                     <RowDefinition></RowDefinition>
                 </Grid.RowDefinitions>
-                
+
                 <ListBox Grid.Column="0" Grid.Row="0" ItemsSource="{Binding Queries}" DisplayMemberPath="FullPath" SelectedItem="{Binding SelectedQuery}">
 
                 </ListBox>

@@ -637,12 +637,12 @@ namespace WordExporter.UI.ViewModel
             {
                 foreach (var parameter in SelectedTemplate.Parameters)
                 {
-                    Parameters.Add(new ParameterViewModel(parameter.Key, parameter.Value));
+                    Parameters.Add(parameter);
                 }
 
                 foreach (var parameter in SelectedTemplate.ArrayParameters)
                 {
-                    ArrayParameters.Add(new ParameterViewModel(parameter.Key, parameter.Value));
+                    ArrayParameters.Add(new ParameterViewModel(parameter.Key, parameter.Value, null));
                 }
             }
         }
