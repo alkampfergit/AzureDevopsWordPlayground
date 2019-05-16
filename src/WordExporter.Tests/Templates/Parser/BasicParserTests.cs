@@ -229,5 +229,36 @@ query: ""SELECT
             Assert.That(querySection.Query.Contains("AND [System.IterationPath] = '{iterationPath}'"));
             Assert.That(querySection.Query.Contains("[System.TeamProject] = @project"));
         }
+
+        [Test]
+        public void Multiline_query_complex()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[query]]
+    query: ""SELECT
+        *
+        FROM
+            workitems
+        WHERE
+            [System.WorkItemType] = 'Feature' AND
+            [Microsoft.VSTS.Scheduling.TargetDate] >= '{TargetDateStart}' AND
+            [Microsoft.VSTS.Scheduling.TargetDate] <= '{TargetDateEnd}' AND
+            NOT[System.Tags] CONTAINS 'outofrelease' AND
+
+            NOT[System.Tags] CONTAINS 'Report' AND
+            [System.TeamProject] = '{teamProjectName}'
+          AND(
+            [System.IterationPath] = '{Iteration1}'
+            OR [System.IterationPath] = '{Iteration2}'
+            OR [System.IterationPath] = '{Iteration3}'
+            OR [System.IterationPath] = '{Iteration4}'
+            Or [System.IterationPath] = '{Iteration5}'
+          )""
+    tableTemplate: 2_table.docx
+");
+            var querySection = def.AllSections.Single() as QuerySection;
+            Assert.That(querySection.Query.Contains("Or [System.IterationPath] = '{Iteration5}'"));
+        }
     }
 }
