@@ -515,10 +515,9 @@ namespace WordExporter.UI.ViewModel
                     .ToList();
 
                     Int32 maxParameterCount = arrayParameters.Max(p => p.Values.Count);
-                    StringBuilder fileSuffix = new StringBuilder();
-
                     for (int i = 0; i < maxParameterCount; i++)
                     {
+                        StringBuilder fileSuffix = new StringBuilder();
                         Dictionary<string, object> parameters = PrepareUserParameters();
                         foreach (var arrayParameter in arrayParameters)
                         {
