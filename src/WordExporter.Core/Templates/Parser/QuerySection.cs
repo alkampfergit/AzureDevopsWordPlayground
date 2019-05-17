@@ -174,6 +174,7 @@ namespace WordExporter.Core.Templates.Parser
                 }
                 else
                 {
+                    //TODO: THis is a logic that should propably be completely changed with the concept of array parameters.
                     if (parameters.TryGetValue("iterations", out object iterations)
                         && iterations is List<String> iterationList)
                     {

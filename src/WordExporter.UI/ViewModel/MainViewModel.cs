@@ -591,10 +591,18 @@ namespace WordExporter.UI.ViewModel
             Dictionary<string, Object> parameters = new Dictionary<string, object>();
             foreach (var parameter in Parameters)
             {
-                parameters[parameter.Name] = parameter.Value;
+                if (parameter.Type == "iterations")
+                {
+                    List<String> iterations = Iterations
+                        .Where(i => i.Selected)
+                        .Select(i => $"[System.IterationPath] = '{i.Path}'").ToList();
+                    parameters[parameter.Name] = $"({String.Join(" OR ", iterations)})";
+                }
+                else
+                {
+                    parameters[parameter.Name] = parameter.Value;
+                }
             }
-            List<String> iterations = Iterations.Where(i => i.Selected).Select(i => i.Path).ToList();
-            parameters["iterations"] = iterations;
             return parameters;
         }
 

@@ -16,6 +16,8 @@ namespace WordExporter.UI.ViewModel
         {
             _iteration = iteration;
             Path = iteration.Path;
+            StartDate = iteration.Attributes?.StartDate;
+            EndDate = iteration.Attributes?.FinishDate;
         }
 
         private String _path;
@@ -29,6 +31,34 @@ namespace WordExporter.UI.ViewModel
             set
             {
                 Set<String>(() => this.Path, ref _path, value);
+            }
+        }
+
+        private DateTime? _startDate;
+
+        public DateTime? StartDate
+        {
+            get
+            {
+                return _startDate;
+            }
+            set
+            {
+                Set<DateTime?>(() => this.StartDate, ref _startDate, value);
+            }
+        }
+
+        private DateTime? _endDate;
+
+        public DateTime? EndDate
+        {
+            get
+            {
+                return _endDate;
+            }
+            set
+            {
+                Set<DateTime?>(() => this.EndDate, ref _endDate, value);
             }
         }
 

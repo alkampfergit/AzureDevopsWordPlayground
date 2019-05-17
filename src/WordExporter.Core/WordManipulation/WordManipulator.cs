@@ -252,7 +252,7 @@ namespace WordExporter.Core.WordManipulation
                         //Each cycle runs can be changed
                         List<RunMatch> runs = GetAllRunMatches(paragraph);
                         var paragraphInnerText = paragraph.InnerText;
-                        match = Regex.Match(paragraphInnerText, @"\{\{" + replace.Key.Trim('}', '{') + @"(\:[0-9a-zA-Z_-]*?)?\}\}");
+                        match = Regex.Match(paragraphInnerText, @"\{\{" + replace.Key.Trim('}', '{') + @"(\:[0-9a-zA-Z_-]*?)?\}\}", RegexOptions.IgnoreCase);
                         if (match?.Success == true)
                         {
                             //ok we found a match, we need to grab all the run that encompass this match
@@ -771,20 +771,48 @@ namespace WordExporter.Core.WordManipulation
                 return this;
 
             List<Dictionary<String, Object>> workItemCellsData = new List<Dictionary<String, Object>>();
-            List<Int32> parentList = new List<Int32>();
+            List<Int32> parentList = workItems
+                .Select(w => GetParentLink(w))
+                .Where(l => l != null)
+                .Select(l => l.RelatedWorkItemId)
+                .ToList();
+
+            Dictionary<int, WorkItem> parentWorkItems = GetParentsInformation(parentList);
+
+            List<Int32> granParentList = parentWorkItems.Values
+               .Select(w => GetParentLink(w))
+               .Where(l => l != null)
+               .Select(l => l.RelatedWorkItemId)
+               .ToList();
+
+            Dictionary<int, WorkItem> granParentWorkItems = GetParentsInformation(granParentList);
+
             foreach (var workItem in workItems)
             {
+                var parameters = workItem.CreateDictionaryFromWorkItem();
                 RelatedLink parentLink = GetParentLink(workItem);
-                if (parentLink != null)
+                if (parentWorkItems.TryGetValue(parentLink?.RelatedWorkItemId ?? 0, out var parent))
                 {
-                    parentList.Add(parentLink.RelatedWorkItemId);
+                    parameters["parent.title"] = parent.Title;
+                    parameters["parent.id"] = parent.Id;
+                    var granParentLink = GetParentLink(parent);
+                    if (granParentWorkItems.TryGetValue(granParentLink?.RelatedWorkItemId ?? 0, out var granParent))
+                    {
+                        parameters["parent.parent.title"] = granParent.Title;
+                        parameters["parent.parent.id"] = granParent.Id;
+                    }
                 }
+                workItemCellsData.Add(parameters);
             }
+            return FillCompositeTable(skipHeader, workItemCellsData);
+        }
 
-            Dictionary<Int32, WorkItem> parentWorkItems;
+        private static Dictionary<int, WorkItem> GetParentsInformation(List<int> parentList)
+        {
+            //optimize, load all parents in a dictionary with a single query
+            Dictionary<Int32, WorkItem> parentWorkItems = new Dictionary<int, WorkItem>();
             if (parentList.Count > 0)
             {
-
                 //ok now we need to grab all parent link, just to grab 
                 var query = $@"SELECT
     [System.Id],
@@ -798,23 +826,8 @@ ORDER BY [System.Id]
                     .OfType<WorkItem>()
                     .ToDictionary(w => w.Id);
             }
-            else
-            {
-                parentWorkItems = new Dictionary<int, WorkItem>();
-            }
 
-            foreach (var workItem in workItems)
-            {
-                var parameters = workItem.CreateDictionaryFromWorkItem();
-                RelatedLink parentLink = GetParentLink(workItem);
-                if (parentWorkItems.TryGetValue(parentLink?.RelatedWorkItemId ?? 0, out var parent))
-                {
-                    parameters["parent.title"] = parent.Title;
-                    parameters["parent.id"] = parent.Id;
-                }
-                workItemCellsData.Add(parameters);
-            }
-            return FillCompositeTable(skipHeader, workItemCellsData);
+            return parentWorkItems;
         }
 
         private static RelatedLink GetParentLink(WorkItem workItem)
