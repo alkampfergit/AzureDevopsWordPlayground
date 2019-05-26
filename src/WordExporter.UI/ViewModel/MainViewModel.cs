@@ -401,10 +401,9 @@ namespace WordExporter.UI.ViewModel
 
             Status = "Getting iterations for team project " + SelectedTeamProject.Name;
 
-            WorkHttpClient workClient = ConnectionManager.Instance.GetClient<WorkHttpClient>();
-            var allIterations = await workClient.GetTeamIterationsAsync(new TeamContext(SelectedTeamProject.Id));
+            var itManager = new IterationManager(ConnectionManager.Instance);
 
-            foreach (var iteration in allIterations)
+            foreach (var iteration in itManager.GetAllIterationsForTeamProject(SelectedTeamProject.Name))
             {
                 Iterations.Add(new IterationsViewModel(iteration));
             }

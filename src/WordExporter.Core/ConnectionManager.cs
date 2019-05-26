@@ -1,4 +1,5 @@
 ﻿using Microsoft.TeamFoundation.Client;
+using Microsoft.TeamFoundation.Server;
 using Microsoft.TeamFoundation.WorkItemTracking.Client;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
@@ -33,6 +34,8 @@ namespace WordExporter.Core
         private void InitBaseServices()
         {
             _workItemStore = _tfsCollection.GetService<WorkItemStore>();
+            _commonStructureService = _tfsCollection.GetService<ICommonStructureService>();
+            _commonStructureService4 = _tfsCollection.GetService<ICommonStructureService4>();
         }
 
         /// <summary>
@@ -67,8 +70,12 @@ namespace WordExporter.Core
         private TfsTeamProjectCollection _tfsCollection;
         private VssConnection _vssConnection;
         private WorkItemStore _workItemStore;
+        private ICommonStructureService _commonStructureService;
+        private ICommonStructureService4 _commonStructureService4;
 
         public WorkItemStore WorkItemStore => _workItemStore;
+        public ICommonStructureService CommonStructureService => _commonStructureService;
+        public ICommonStructureService4 CommonStructureService4 => _commonStructureService4;
 
         private bool ConnectToTfs(String accountUri, String accessToken)
         {
@@ -91,6 +98,14 @@ namespace WordExporter.Core
         public IEnumerable<String> GetTeamProjectsNames()
         {
             return _workItemStore.Projects.OfType<Project>().Select(_ => _.Name);
+        }
+
+        public Project GetTeamProject(String name)
+        {
+            return _workItemStore.Projects
+                .OfType<Project>()
+                .Where(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault();
         }
 
         public T GetClient<T>() where T : VssHttpClientBase
