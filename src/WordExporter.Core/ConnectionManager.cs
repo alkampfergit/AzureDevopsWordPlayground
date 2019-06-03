@@ -7,7 +7,9 @@ using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
+using WindowsCredential = Microsoft.VisualStudio.Services.Common.WindowsCredential;
 
 namespace WordExporter.Core
 {
@@ -52,17 +54,33 @@ namespace WordExporter.Core
 
         public async Task ConnectAsync(string accountUri)
         {
-            Uri _uri = new Uri(accountUri);
+            Uri uri = new Uri(accountUri);
 
             var creds = new VssClientCredentials(
                 new Microsoft.VisualStudio.Services.Common.WindowsCredential(false),
                 new VssFederatedCredential(true),
                 CredentialPromptType.PromptIfNeeded);
 
-            _vssConnection = new VssConnection(_uri, creds);
+            _vssConnection = new VssConnection(uri, creds);
             await _vssConnection.ConnectAsync().ConfigureAwait(false);
 
-            _tfsCollection = new TfsTeamProjectCollection(_uri, creds);
+            _tfsCollection = new TfsTeamProjectCollection(uri, creds);
+            _tfsCollection.EnsureAuthenticated();
+            InitBaseServices();
+        }
+
+        public async Task ConnectAsyncWithNetworkCredentials(
+            string accountUri, 
+            NetworkCredential credential)
+        {
+            Uri uri = new Uri(accountUri);
+
+            var creds = new VssClientCredentials(new WindowsCredential(credential));
+
+            _vssConnection = new VssConnection(uri, creds);
+            await _vssConnection.ConnectAsync().ConfigureAwait(false);
+
+            _tfsCollection = new TfsTeamProjectCollection(uri, creds);
             _tfsCollection.EnsureAuthenticated();
             InitBaseServices();
         }

@@ -32,8 +32,6 @@ namespace WordExporter.UI.ViewModel
             ServiceLocator.SetLocatorProvider(() => SimpleIoc.Default);
 
             SimpleIoc.Default.Register<MainViewModel>();
-
-            SimpleIoc.Default.Register<MainViewModel>();
         }
 
         public MainViewModel Main

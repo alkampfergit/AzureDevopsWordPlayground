@@ -12,6 +12,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Security;
+using System.ServiceModel.Security;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -59,6 +62,9 @@ namespace WordExporter.UI.ViewModel
             Dump = new RelayCommand(DumpMethod);
             GetIterations = new RelayCommand(GetIterationsMethod);
             Address = StatePersister.Instance.Load<String>("main.Address") ?? String.Empty;
+            CredentialViewModel = new CredentialViewModel();
+            CredentialViewModel.UserName = StatePersister.Instance.Load<String>("userName");
+            UseNetworkCredential = "true".Equals(StatePersister.Instance.Load<String>("useNetworkCredential"), StringComparison.OrdinalIgnoreCase);
         }
 
         private Boolean _connected;
@@ -131,6 +137,34 @@ namespace WordExporter.UI.ViewModel
             {
                 Set<TeamProject>(() => this.SelectedTeamProject, ref _selectedTeamProject, value);
                 GetIterationsMethod();
+            }
+        }
+
+        private Boolean _useNetworkCredential;
+
+        public Boolean UseNetworkCredential
+        {
+            get
+            {
+                return _useNetworkCredential;
+            }
+            set
+            {
+                Set<Boolean>(() => this.UseNetworkCredential, ref _useNetworkCredential, value);
+            }
+        }
+
+        private CredentialViewModel _credentialViewModel;
+
+        public CredentialViewModel CredentialViewModel
+        {
+            get
+            {
+                return _credentialViewModel;
+            }
+            set
+            {
+                Set<CredentialViewModel>(() => this.CredentialViewModel, ref _credentialViewModel, value);
             }
         }
 
@@ -312,7 +346,18 @@ namespace WordExporter.UI.ViewModel
             {
                 Status = "Connecting";
                 var connectionManager = new ConnectionManager();
-                await connectionManager.ConnectAsync(Address);
+                if (!UseNetworkCredential)
+                {
+                    await connectionManager.ConnectAsync(Address);
+                }
+                else
+                {
+                    await connectionManager.ConnectAsyncWithNetworkCredentials(
+                        Address, new NetworkCredential(CredentialViewModel.UserName, CredentialViewModel.Password));
+                    StatePersister.Instance.Save("userName", CredentialViewModel.UserName);
+                    StatePersister.Instance.Save("password", EncryptionUtils.Encrypt( CredentialViewModel.Password));
+                    StatePersister.Instance.Save("useNetworkCredential", UseNetworkCredential.ToString());
+                }
 
                 Status = "Connected, Retrieving Team Projects";
                 var projectHttpClient = connectionManager.GetClient<ProjectHttpClient>();
@@ -430,10 +475,12 @@ namespace WordExporter.UI.ViewModel
             try
             {
                 InnerExecuteExport();
+                Status = $"Export Completed";
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error exporting template: {message}", ex.Message);
+                Status = $"Error exporting template: {ex.Message}";
             }
         }
 
@@ -457,10 +504,12 @@ namespace WordExporter.UI.ViewModel
             try
             {
                 InnerExecuteDump();
+                Status = $"Export Completed";
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error exporting template: {message}", ex.Message);
+                Status = $"Error exporting template: {ex.Message}";
             }
         }
 

@@ -270,6 +270,7 @@
       <HintPath>..\packages\Microsoft.AspNet.WebApi.Client.5.2.7\lib\net45\System.Net.Http.Formatting.dll</HintPath>
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Http, Version=5.2.7.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -299,8 +300,10 @@
     </ApplicationDefinition>
     <Compile Include="Support\BindingProxy.cs" />
     <Compile Include="Support\BooleanToCollapsedConverter.cs" />
+    <Compile Include="Support\EncryptionUtils.cs" />
     <Compile Include="Support\InvertBoolConverter.cs" />
     <Compile Include="Support\NullToVisibilityConverter.cs" />
+    <Compile Include="Support\PasswordBoxHelper.cs" />
     <Compile Include="Support\StatePersister.cs" />
     <Compile Include="Support\StringToVisibiltyConverter.cs" />
     <Compile Include="Support\ValueConverterGroup.cs" />
@@ -308,6 +311,7 @@
     <Compile Include="ViewModel\MainViewModel.cs" />
     <Compile Include="ViewModel\QueryResultViewModel.cs" />
     <Compile Include="ViewModel\QueryViewModel.cs" />
+    <Compile Include="ViewModel\SubModels\CredentialViewModel.cs" />
     <Compile Include="ViewModel\SubModels\ParameterViewModel.cs" />
     <Compile Include="ViewModel\SubModels\TemplateInfo.cs" />
     <Compile Include="ViewModel\ViewModelLocator.cs" />
