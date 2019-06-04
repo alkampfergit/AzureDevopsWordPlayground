@@ -90,6 +90,10 @@ namespace WordExporter.UI.ViewModel
         internal void Append(LogEvent logEvent)
         {
             string renderedMessage = logEvent.RenderMessage();
+            if (logEvent.Exception != null)
+            {
+                renderedMessage += "\n" + logEvent.Exception.ToString();
+            }
             Logs.Add(new LogViewModel()
             {
                 Level = logEvent.Level.ToString(),

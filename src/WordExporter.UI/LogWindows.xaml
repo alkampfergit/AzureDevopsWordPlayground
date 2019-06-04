@@ -5,27 +5,68 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:WordExporter.UI.ViewModel"
         xmlns:local="clr-namespace:WordExporter.UI"
+        xmlns:support="clr-namespace:WordExporter.UI.Support"
         mc:Ignorable="d"
         DataContext="{Binding LogCollector, Source={StaticResource Locator}}"
         Title="LogWindows" Height="450" Width="800">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="26" />
-            <RowDefinition Height="auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <DockPanel Grid.Row="0">
             <Label>Application insight Key</Label>
             <TextBox Text="{Binding AiKey}"></TextBox>
         </DockPanel>
-        
-        <ListView ItemsSource="{Binding Logs}" Grid.Row="1">
+
+        <DataGrid Grid.Row="1" CanUserAddRows="false" ItemsSource="{Binding Logs}" AutoGenerateColumns="False">
+            <DataGrid.Resources>
+                <support:BindingProxy x:Key="proxy" Data="{Binding}" />
+            </DataGrid.Resources>
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Width="300" Header="Level">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Label Content="{Binding Level}" Height="26" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <DataGridTemplateColumn Width="*" Header="Value">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <TextBox 
+                                    IsReadOnly="True"
+                                    MaxLines="10"
+                                    Text="{Binding Message, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                            HorizontalAlignment="Stretch" />
+
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+
+        <!--<ListView ItemsSource="{Binding Logs}" Grid.Row="1">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Level" Width="120" DisplayMemberBinding="{Binding Level}" />
-                    <GridViewColumn Header="Message" Width="800" DisplayMemberBinding="{Binding Message}" />
+                    -->
+        <!--<GridViewColumn Header="Message" Width="800" DisplayMemberBinding="{Binding Message}" />-->
+        <!--
+                    <DataGridTemplateColumn Width="300" Header="Message">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Label Content="{Binding Name}" Height="26" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                 </GridView>
             </ListView.View>
-        </ListView>
+        </ListView>-->
     </Grid>
 </Window>
