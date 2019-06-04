@@ -9,7 +9,17 @@
         DataContext="{Binding LogCollector, Source={StaticResource Locator}}"
         Title="LogWindows" Height="450" Width="800">
     <Grid>
-        <ListView ItemsSource="{Binding Logs}" >
+        <Grid.RowDefinitions>
+            <RowDefinition Height="26" />
+            <RowDefinition Height="auto" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0">
+            <Label>Application insight Key</Label>
+            <TextBox Text="{Binding AiKey}"></TextBox>
+        </DockPanel>
+        
+        <ListView ItemsSource="{Binding Logs}" Grid.Row="1">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Level" Width="120" DisplayMemberBinding="{Binding Level}" />

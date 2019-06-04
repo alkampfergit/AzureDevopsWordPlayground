@@ -1,8 +1,12 @@
 ﻿using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.Messaging;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Serilog.Events;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using WordExporter.UI.Support;
 
 namespace WordExporter.UI.ViewModel
 {
@@ -42,6 +46,30 @@ namespace WordExporter.UI.ViewModel
         public LogViewModelCollector()
         {
             Messenger.Default.Register<LogEvent>(this, Append);
+            AiKey = StatePersister.Instance.Load<String>("aiKey");
+        }
+
+        private TelemetryClient _telemetryClient;
+
+        private String _aiKey;
+
+        public String AiKey
+        {
+            get
+            {
+                return _aiKey;
+            }
+            set
+            {
+                _telemetryClient = null;
+                Set<String>(() => this.AiKey, ref _aiKey, value);
+                if (!String.IsNullOrEmpty(_aiKey))
+                {
+                    _telemetryClient = new TelemetryClient();
+                    TelemetryConfiguration.Active.InstrumentationKey = _aiKey;
+                }
+                StatePersister.Instance.Save<String>("aiKey", _aiKey);
+            }
         }
 
         private ObservableCollection<LogViewModel> _logs = new ObservableCollection<LogViewModel>();
@@ -61,11 +89,26 @@ namespace WordExporter.UI.ViewModel
 
         internal void Append(LogEvent logEvent)
         {
+            string renderedMessage = logEvent.RenderMessage();
             Logs.Add(new LogViewModel()
             {
                 Level = logEvent.Level.ToString(),
-                Message = logEvent.RenderMessage(),
+                Message = renderedMessage,
             });
+
+            if (_telemetryClient != null)
+            {
+                if (logEvent.Exception != null)
+                {
+                    _telemetryClient.TrackException(logEvent.Exception,
+                        new Dictionary<String, String>()
+                        {
+                            ["message"] = renderedMessage,
+                        });
+                }
+
+                _telemetryClient.TrackTrace(renderedMessage);
+            }
         }
     }
 }
