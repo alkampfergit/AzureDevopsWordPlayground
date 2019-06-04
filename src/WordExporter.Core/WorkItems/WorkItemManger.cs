@@ -45,7 +45,9 @@ namespace WordExporter.Core.WorkItems
 
             try
             {
-                return _connection.WorkItemStore.Query(query.ToString())
+                var realQuery = query.ToString();
+                Log.Information("About to execute query {query}", realQuery);
+                return _connection.WorkItemStore.Query(realQuery)
                     .OfType<WorkItem>()
                     .ToList();
             }

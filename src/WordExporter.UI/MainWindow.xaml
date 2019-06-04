@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:WordExporter.UI"
         xmlns:support="clr-namespace:WordExporter.UI.Support"
         mc:Ignorable="d"
         DataContext="{Binding Main, Source={StaticResource Locator}}"
@@ -172,23 +171,7 @@
 
                 <GridSplitter Grid.Row="1" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
 
-                <DataGrid Grid.Row="2"  ItemsSource="{Binding ArrayParameters}" AutoGenerateColumns="False">
-                    <DataGrid.Columns>
-                        <DataGridTemplateColumn Width="300" Header="Name">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Label Content="{Binding Name}" Height="26" />
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-
-                        <DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />
-                    </DataGrid.Columns>
-                </DataGrid>
-
-                <GridSplitter Grid.Row="3" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
-
-                <ListView Grid.Row="4" ItemsSource="{Binding Iterations}" >
+                <ListView Grid.Row="2" ItemsSource="{Binding Iterations}" >
                     <ListView.View>
                         <GridView>
                             <GridViewColumn Width="30">
@@ -206,6 +189,22 @@
                         </GridView>
                     </ListView.View>
                 </ListView>
+
+                <GridSplitter Grid.Row="3" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
+
+                <DataGrid Grid.Row="4"  ItemsSource="{Binding ArrayParameters}" AutoGenerateColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="300" Header="Name">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Label Content="{Binding Name}" Height="26" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />
+                    </DataGrid.Columns>
+                </DataGrid>
             </Grid>
 
             <Grid Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource InvertAndVisibilitate}}">
@@ -253,7 +252,6 @@
                     </ListView.View>
                 </ListView>
             </Grid>
-
         </Grid>
     </Grid>
 </Window>

@@ -31,7 +31,13 @@ namespace WordExporter.UI
                      rollingInterval: RollingInterval.Day,
                      restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error
                 )
+                .WriteTo.Sink(new LogInterceptorSink())
                 .CreateLogger();
+
+            var lv = new LogWindows();
+            lv.Show();
+
+            Log.Information("Word exporter started!");
         }
 
         protected override void OnInitialized(EventArgs e)
