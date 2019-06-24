@@ -17,6 +17,7 @@ namespace WordExporter
 {
     public static class Program
     {
+        [STAThread]
         private static void Main(string[] args)
         {
             ConfigureSerilog();
@@ -36,6 +37,7 @@ namespace WordExporter
 
             ConnectionManager connection = new ConnectionManager(options.ServiceAddress, options.GetAccessToken());
 
+            DumpAllIterations(connection);
             //DumpAllTeamProjects(connection);
 
             if (String.IsNullOrEmpty(options.TemplateFolder))
@@ -54,6 +56,16 @@ namespace WordExporter
             }
         }
 
+        private static void DumpAllIterations(ConnectionManager connection)
+        {
+            var im = new IterationManager(connection);
+            var iterations = im.GetAllIterationsForTeamProject("cmmi playground");
+            foreach (var iteration in iterations)
+            {
+                Console.WriteLine(iteration.Path);
+            }
+        }
+
         private static void PerformTemplateExport(ConnectionManager connection)
         {
             var wordFolderManager = new WordTemplateFolderManager(options.TemplateFolder);
@@ -61,7 +73,7 @@ namespace WordExporter
 
             //now we need to ask user parameter value
             Dictionary<string, Object> parameters = new Dictionary<string, object>();
-            foreach (var parameterName in wordFolderManager.TemplateDefinition.Parameters.ParameterNames)
+            foreach (var parameterName in wordFolderManager.TemplateDefinition.ParameterSection.Parameters.Keys)
             {
                 Console.Write($"Parameter {parameterName}:");
                 parameters[parameterName] = Console.ReadLine();
@@ -144,11 +156,11 @@ namespace WordExporter
                 .MinimumLevel.Debug()
                 .WriteTo.Console()
                 .WriteTo.File(
-                    "logs.txt",
+                    "logs\\logs.txt",
                      rollingInterval: RollingInterval.Day
                 )
                 .WriteTo.File(
-                    "errors.txt",
+                    "logs\\errors.txt",
                      rollingInterval: RollingInterval.Day,
                      restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error
                 )

@@ -1,17 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Data;
+using System.Windows.Markup;
 
 namespace WordExporter.UI.Support
 {
     /// <summary>
     /// Inverts a boolean value.
     /// </summary>
-    public class InvertBoolConverter : IValueConverter
+    public class InvertBoolConverter : MarkupExtension, IValueConverter
     {
         public object Convert(
             object value,
@@ -19,9 +16,9 @@ namespace WordExporter.UI.Support
             object parameter,
             CultureInfo culture)
         {
-            if (value is bool)
+            if (value is bool x)
             {
-                return (!(bool)value);
+                return !x;
             }
             else
             {
@@ -35,14 +32,19 @@ namespace WordExporter.UI.Support
             object parameter,
             CultureInfo culture)
         {
-            if (value is bool)
+            if (value is bool x)
             {
-                return (!(bool)value);
+                return !x;
             }
             else
             {
                 throw new ArgumentException();
             }
+        }
+
+        public override object ProvideValue(IServiceProvider serviceProvider)
+        {
+            return this;
         }
     }
 }

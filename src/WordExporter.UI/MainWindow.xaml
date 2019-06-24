@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:WordExporter.UI"
         xmlns:support="clr-namespace:WordExporter.UI.Support"
         mc:Ignorable="d"
         DataContext="{Binding Main, Source={StaticResource Locator}}"
@@ -12,14 +11,16 @@
     <Window.Resources>
         <support:ValueConverterGroup x:Key="InvertAndVisibilitate">
             <support:InvertBoolConverter/>
-            <BooleanToVisibilityConverter/>
+            <support:BooleanToCollapsedConverter />
         </support:ValueConverterGroup>
-        <BooleanToVisibilityConverter x:Key="booleanToVisibilityConverter" />
+
+        <support:BooleanToCollapsedConverter x:Key="booleanToVisibilityConverter" />
         <support:NullVisibilityConverter x:Key="nullVisibilityConverter" />
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="26"/>
             <RowDefinition Height="26"/>
             <RowDefinition Height="26"/>
             <RowDefinition Height="26" />
@@ -50,6 +51,26 @@
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <CheckBox VerticalAlignment="Center" Grid.Column="0" IsChecked="{Binding UseNetworkCredential}">Use Network Credentials</CheckBox>
+            <Label Grid.Column="1">User Name</Label>
+            <TextBox Grid.Column="2" Text="{Binding CredentialViewModel.UserName}"></TextBox>
+            <Label Grid.Column="3">Password</Label>
+
+            <PasswordBox Grid.Column="4" 
+                x:Name="PasswordBox"
+                support:PasswordBoxPassword.EncryptedPassword="{Binding CredentialViewModel.Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                PasswordChanged="PasswordBox_OnPasswordChanged"></PasswordBox>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="auto"/>
                 <ColumnDefinition Width="50"/>
                 <ColumnDefinition Width="auto"/>
                 <ColumnDefinition Width="*"/>
@@ -61,12 +82,14 @@
             <Label Grid.Column="3" Content="{Binding Status}"></Label>
         </Grid>
 
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="110"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="200"/>
                 <ColumnDefinition Width="120"/>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="80"/>
             </Grid.ColumnDefinitions>
 
             <Label Grid.Column="0">Template folder</Label>
@@ -75,10 +98,12 @@
                 ItemsSource="{Binding Templates}" 
                 DisplayMemberPath="TemplateName"
                 SelectedItem="{Binding SelectedTemplate}"></ComboBox>
-            <Button Grid.Column="3"  Command="{Binding Export}">Export</Button>
+            <CheckBox Grid.Column="3" Content="Generate PDF" VerticalAlignment="Center" IsChecked="{Binding GeneratePdf}"></CheckBox>
+            <Button Grid.Column="4"  Command="{Binding Export}">Export</Button>
+            <Button Grid.Column="5"  Command="{Binding Dump}">Dump</Button>
         </Grid>
 
-        <Grid Grid.Row="3" 
+        <Grid Grid.Row="4" 
               Visibility="{Binding SelectedTemplate, Converter={StaticResource nullVisibilityConverter}}">
 
             <Grid Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource booleanToVisibilityConverter }}">
@@ -87,10 +112,16 @@
                     <RowDefinition></RowDefinition>
                     <RowDefinition Height="4"></RowDefinition>
                     <RowDefinition></RowDefinition>
+                    <RowDefinition Height="4"></RowDefinition>
+                    <RowDefinition></RowDefinition>
                 </Grid.RowDefinitions>
 
-                <!--<Button Grid.Row="0" Command="{Binding GetIterations}" Content="Load all team project iterations" />-->
+                <!--<Button Grid.Row="0" Command="{Binding GetIterations}" Content="Load all team project 
+                " />-->
                 <DataGrid Grid.Row="0"  ItemsSource="{Binding Parameters}" AutoGenerateColumns="False">
+                    <DataGrid.Resources>
+                        <support:BindingProxy x:Key="proxy" Data="{Binding}" />
+                    </DataGrid.Resources>
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Width="300" Header="Name">
                             <DataGridTemplateColumn.CellTemplate>
@@ -99,32 +130,51 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
- 
-                        <DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />
+
+                        <!--<DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />-->
+                        <DataGridTemplateColumn Width="*" Header="Value">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid Visibility="{Binding Type, Converter={support:StringToVisibiltyConverter Value=string }}">
+                                            <!--This area is for string type.-->
+                                            <TextBox 
+                                            Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                 HorizontalAlignment="Stretch"
+                                                 Visibility="{Binding HasAllowedValues, Converter={StaticResource InvertAndVisibilitate }}" />
+
+                                            <ComboBox SelectedValue="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                  ItemsSource="{Binding AllowedValues}"
+                                                  HorizontalAlignment="Stretch"
+                                                   Visibility="{Binding HasAllowedValues, Converter={StaticResource booleanToVisibilityConverter }}"
+                                                  />
+                                        </Grid>
+                                        <Grid Visibility="{Binding Type, Converter={support:StringToVisibiltyConverter Value=iteration }}">
+                                            <!--This area is for string type.-->
+
+                                            <ComboBox SelectedValue="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                  DisplayMemberPath="Path"
+                                                  SelectedValuePath="Path"
+                                                  IsEditable="True"
+                                                  ItemsSource="{Binding Data.Iterations, Source={StaticResource proxy} }"
+                                                  HorizontalAlignment="Stretch" />
+                                        </Grid>
+                                        <Grid Visibility="{Binding Type, Converter={support:StringToVisibiltyConverter Value=iterations }}">
+                                            <Label Content="This value is a special type, plase choose iterations with checkboxes in the bottom of the UI" />
+                                        </Grid>
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
-                <!--<ListView Grid.Row="0" ItemsSource="{Binding Parameters}" >
-                    <ListView.View>
-                        <GridView>
-
-                            <GridViewColumn Header="Name" Width="120" DisplayMemberBinding="{Binding Name}" />
-                            <GridViewColumn Header="Value" Width="auto" >
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Path=Value}" TextWrapping="Wrap" Margin="0"></TextBlock>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                        </GridView>
-                    </ListView.View>
-                </ListView>-->
 
                 <GridSplitter Grid.Row="1" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
 
                 <ListView Grid.Row="2" ItemsSource="{Binding Iterations}" >
                     <ListView.View>
                         <GridView>
-                            <GridViewColumn>
+                            <GridViewColumn Width="30">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
                                         <Grid HorizontalAlignment="Stretch">
@@ -133,10 +183,28 @@
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
-                            <GridViewColumn Header="Path" Width="120" DisplayMemberBinding="{Binding Path}" />
+                            <GridViewColumn Header="Path" Width="400" DisplayMemberBinding="{Binding Path}" />
+                            <GridViewColumn Header="StartDate" Width="200" DisplayMemberBinding="{Binding StartDate}" />
+                            <GridViewColumn Header="EndDate" Width="200" DisplayMemberBinding="{Binding EndDate}" />
                         </GridView>
                     </ListView.View>
                 </ListView>
+
+                <GridSplitter Grid.Row="3" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
+
+                <DataGrid Grid.Row="4"  ItemsSource="{Binding ArrayParameters}" AutoGenerateColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="300" Header="Name">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Label Content="{Binding Name}" Height="26" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />
+                    </DataGrid.Columns>
+                </DataGrid>
             </Grid>
 
             <Grid Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource InvertAndVisibilitate}}">
@@ -149,7 +217,7 @@
                     <RowDefinition Height="auto"></RowDefinition>
                     <RowDefinition></RowDefinition>
                 </Grid.RowDefinitions>
-                
+
                 <ListBox Grid.Column="0" Grid.Row="0" ItemsSource="{Binding Queries}" DisplayMemberPath="FullPath" SelectedItem="{Binding SelectedQuery}">
 
                 </ListBox>
@@ -184,7 +252,6 @@
                     </ListView.View>
                 </ListView>
             </Grid>
-
         </Grid>
     </Grid>
 </Window>

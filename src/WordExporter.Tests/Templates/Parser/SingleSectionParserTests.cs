@@ -145,5 +145,55 @@ value:[with]:semicolon
             Assert.That(parameterList[1].Key, Is.EqualTo("param2"));
             Assert.That(parameterList[1].Value, Is.EqualTo("b"));
         }
+
+        [Test]
+        public void Parameter_with_default_value()
+        {
+            var keyValue = ParameterSection.Parameter.Parse("key=defValue");
+            Assert.That(keyValue.Key, Is.EqualTo("key"));
+            Assert.That(keyValue.Value, Is.EqualTo("defValue"));
+        }
+
+        [Test]
+        public void Parameter_with_default_value_and_spaces()
+        {
+            var keyValue = ParameterSection.Parameter.Parse("key  =  defValue");
+            Assert.That(keyValue.Key, Is.EqualTo("key"));
+            Assert.That(keyValue.Value, Is.EqualTo("defValue"));
+        }
+
+        [Test]
+        public void Parameter_without_default_value_but_equalSign()
+        {
+            var keyValue = ParameterSection.Parameter.Parse("key=");
+            Assert.That(keyValue.Key, Is.EqualTo("key"));
+            Assert.That(keyValue.Value, Is.EqualTo(""));
+        }
+
+        [Test]
+        public void Parameter_without_default_value()
+        {
+            var keyValue = ParameterSection.Parameter.Parse("key");
+            Assert.That(keyValue.Key, Is.EqualTo("key"));
+            Assert.That(keyValue.Value, Is.EqualTo(""));
+        }
+
+        [Test]
+        public void Parameter_without_default_value_and_other_line()
+        {
+            var keyValue = ParameterSection.Parameter.Parse(@"key
+otherline");
+            Assert.That(keyValue.Key, Is.EqualTo("key"));
+            Assert.That(keyValue.Value, Is.EqualTo(""));
+        }
+
+        [Test]
+        public void Parameter_without_default_value_and_other_line_many_parse()
+        {
+            var keyValue = ParameterSection.Parser.Parse(@"key
+otherline");
+            Assert.That(keyValue.Parameters.Count, Is.EqualTo(2));
+            Assert.That(keyValue.Parameters.Keys, Is.EquivalentTo(new[] { "key", "otherline"}));
+        }
     }
 }

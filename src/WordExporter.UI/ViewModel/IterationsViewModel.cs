@@ -1,21 +1,25 @@
 ﻿using GalaSoft.MvvmLight;
-using Microsoft.TeamFoundation.Work.WebApi;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using static WordExporter.Core.WorkItems.IterationManager;
 
 namespace WordExporter.UI.ViewModel
 {
     public class IterationsViewModel : ViewModelBase
     {
-        private readonly TeamSettingsIteration _iteration;
+        private readonly IterationInfo _iteration;
 
-        public IterationsViewModel(TeamSettingsIteration iteration)
+        public IterationsViewModel(IterationInfo iteration)
         {
             _iteration = iteration;
             Path = iteration.Path;
+            if (DateTime.TryParse(iteration.StartDate, out DateTime startDate))
+            {
+                StartDate = startDate;
+            }
+            if (DateTime.TryParse(iteration.EndDate, out DateTime endDate))
+            {
+                EndDate = endDate;
+            } 
         }
 
         private String _path;
@@ -29,6 +33,34 @@ namespace WordExporter.UI.ViewModel
             set
             {
                 Set<String>(() => this.Path, ref _path, value);
+            }
+        }
+
+        private DateTime? _startDate;
+
+        public DateTime? StartDate
+        {
+            get
+            {
+                return _startDate;
+            }
+            set
+            {
+                Set<DateTime?>(() => this.StartDate, ref _startDate, value);
+            }
+        }
+
+        private DateTime? _endDate;
+
+        public DateTime? EndDate
+        {
+            get
+            {
+                return _endDate;
+            }
+            set
+            {
+                Set<DateTime?>(() => this.EndDate, ref _endDate, value);
             }
         }
 

@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Text;
-using System.Threading.Tasks;
 using WordExporter.Core.WordManipulation;
 
 namespace WordExporter.Core.Templates
@@ -15,7 +14,7 @@ namespace WordExporter.Core.Templates
     {
         private readonly WordTemplateFolderManager _wordTemplateFolderManager;
 
-        public TemplateExecutor(WordTemplateFolderManager  wordTemplateFolderManager)
+        public TemplateExecutor(WordTemplateFolderManager wordTemplateFolderManager)
         {
             _wordTemplateFolderManager = wordTemplateFolderManager;
         }
@@ -43,7 +42,9 @@ namespace WordExporter.Core.Templates
             Dictionary<string, Object> parameters)
         {
             if (_wordTemplateFolderManager.TemplateDefinition == null)
+            {
                 throw new ApplicationException("Cannot generate work file, template folder name does not contain valid structure.txt file");
+            }
 
             //Ok, we start creating the empty file, then proceed to create everything.
             using (WordManipulator manipulator = new WordManipulator(fileName, true))
@@ -56,6 +57,27 @@ namespace WordExporter.Core.Templates
                     section.Assemble(manipulator, parameters, connectionManager, _wordTemplateFolderManager, teamProjectName);
                 }
             }
+        }
+
+        public void DumpWorkItem(
+            String fileName,
+            ConnectionManager connectionManager,
+            String teamProjectName,
+            Dictionary<string, Object> parameters)
+        {
+            if (_wordTemplateFolderManager.TemplateDefinition == null)
+            {
+                throw new ApplicationException("Cannot generate work file, template folder name does not contain valid structure.txt file");
+            }
+
+            StringBuilder sb = new StringBuilder();
+            //Scan each section to get all work item if there are any.
+            foreach (var section in _wordTemplateFolderManager.TemplateDefinition.AllSections)
+            {
+                //now each section can do something with my standard word manipulator
+                section.Dump(sb, parameters, connectionManager, _wordTemplateFolderManager, teamProjectName);
+            }
+            File.WriteAllText(fileName, sb.ToString());
         }
     }
 }

@@ -17,7 +17,62 @@ namespace WordExporter.Tests.Templates.Parser
 @"[[parameters]]
     parama
     paramb");
-            Assert.That(def.Parameters, Is.Not.Null);
+            Assert.That(def.ParameterSection, Is.Not.Null);
+        }
+
+        [Test]
+        public void Basic_Parsing_of_Parameters_with_default_value_returns_parameter_section()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[parameters]]
+    parama=2017-01-01
+    paramb=2019-04-31");
+            Assert.That(def.ParameterSection, Is.Not.Null);
+            var paramA = def.ParameterSection.Parameters["parama"];
+            Assert.That(paramA, Is.EqualTo("2017-01-01"));
+
+            var paramB = def.ParameterSection.Parameters["paramb"];
+            Assert.That(paramB, Is.EqualTo("2019-04-31"));
+        }
+
+        [Test]
+        public void Basic_Parsing_of_Parameters_with_allowed_values()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[parameterDefinition]]
+    parama=string/A|B|C
+    paramb=datetime");
+            Assert.That(def.ParameterDefinition, Is.Not.Null);
+            var paramA = def.ParameterDefinition["parama"];
+            Assert.That(paramA.Type, Is.EqualTo("string"));
+            Assert.That(paramA.AllowedValues, Is.EquivalentTo(new[] { "A","B", "C"}));
+
+            var paramb = def.ParameterDefinition["paramb"];
+            Assert.That(paramb.Type, Is.EqualTo("datetime"));
+        }
+
+        [Test]
+        public void Basic_Parsing_of_array_parameter()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[arrayParameters]]
+    tags");
+            Assert.That(def.ArrayParameterSection.ArrayParameters.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Basic_Parsing_of_array_parameter_followed_by_other_params()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[arrayParameters]]
+    tags=te,tr,ty
+[[parameters]]
+	TargetDateStart=2019-01-01");
+            Assert.That(def.ArrayParameterSection.ArrayParameters.Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -54,11 +109,13 @@ namespace WordExporter.Tests.Templates.Parser
             var sut = new ConfigurationParser();
             TemplateDefinition def = sut.ParseTemplateDefinition(
 @"[[query]]
+    name: TestQueryName
     query: ""SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'""
     template/Product Backlog Item: pbix.docx
     template/Bug: bugaa.docx
 ");
             var querySection = def.AllSections.Single() as QuerySection;
+            Assert.That(querySection.Name, Is.EqualTo("TestQueryName"));
             Assert.That(querySection.Query, Is.EqualTo("SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'"));
         }
 
@@ -100,7 +157,7 @@ namespace WordExporter.Tests.Templates.Parser
     parama
     paramb
 ");
-            Assert.That(def.Parameters.ParameterNames, Is.EquivalentTo(new[] { "parama", "paramb" }));
+            Assert.That(def.ParameterSection.Parameters.Keys, Is.EquivalentTo(new[] { "parama", "paramb" }));
         }
 
         [Test]
@@ -171,6 +228,37 @@ query: ""SELECT
             var querySection = def.AllSections.Single() as QuerySection;
             Assert.That(querySection.Query.Contains("AND [System.IterationPath] = '{iterationPath}'"));
             Assert.That(querySection.Query.Contains("[System.TeamProject] = @project"));
+        }
+
+        [Test]
+        public void Multiline_query_complex()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[query]]
+    query: ""SELECT
+        *
+        FROM
+            workitems
+        WHERE
+            [System.WorkItemType] = 'Feature' AND
+            [Microsoft.VSTS.Scheduling.TargetDate] >= '{TargetDateStart}' AND
+            [Microsoft.VSTS.Scheduling.TargetDate] <= '{TargetDateEnd}' AND
+            NOT[System.Tags] CONTAINS 'outofrelease' AND
+
+            NOT[System.Tags] CONTAINS 'Report' AND
+            [System.TeamProject] = '{teamProjectName}'
+          AND(
+            [System.IterationPath] = '{Iteration1}'
+            OR [System.IterationPath] = '{Iteration2}'
+            OR [System.IterationPath] = '{Iteration3}'
+            OR [System.IterationPath] = '{Iteration4}'
+            Or [System.IterationPath] = '{Iteration5}'
+          )""
+    tableTemplate: 2_table.docx
+");
+            var querySection = def.AllSections.Single() as QuerySection;
+            Assert.That(querySection.Query.Contains("Or [System.IterationPath] = '{Iteration5}'"));
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿[[parameters]]
-	param1
+	param1=2010-01-01
 	param2
 [[static]]
     filename: header.docx

@@ -21,7 +21,17 @@ namespace WordExporter.Core.Templates
     {
         public TemplateDefinition(IEnumerable<Section> sections)
         {
-            Parameters = sections.OfType<ParameterSection>().SingleOrDefault();
+            ParameterSection = sections.OfType<ParameterSection>().SingleOrDefault();
+            var pdef = sections.OfType<ParameterDefinitionSection>().SingleOrDefault();
+            if (pdef != null)
+            {
+                ParameterDefinition = pdef.Parameters;
+            }
+            else
+            {
+                ParameterDefinition = new Dictionary<string, ParameterDefinition>();
+            }
+            ArrayParameterSection = sections.OfType<ArrayParameterSection>().SingleOrDefault();
             AllSections = sections.ToArray();
         }
 
@@ -35,6 +45,18 @@ namespace WordExporter.Core.Templates
         /// and that can be referred inside word template
         /// with standard sytax {{parameter}}
         /// </summary>
-        public ParameterSection Parameters { get; internal set; }
+        public ParameterSection ParameterSection { get; internal set; }
+
+        /// <summary>
+        /// Optional definition of parameters
+        /// </summary>
+        public Dictionary<String, ParameterDefinition> ParameterDefinition { get; internal set; }
+
+        /// <summary>
+        /// Array Parameters are special parameters, the user can specify multiple values
+        /// comma or semicolon separated, and the template will be executed multiple times
+        /// once for each array parameter instance.
+        /// </summary>
+        public ArrayParameterSection ArrayParameterSection { get; internal set; }
     }
 }

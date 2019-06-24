@@ -126,7 +126,7 @@ namespace WordExporter.Core.WordManipulation
             startingParameters = startingParameters ?? new Dictionary<string, object>();
             using (WordManipulator m = new WordManipulator(tempFile, false))
             {
-                Dictionary<string, object> tokenList = CreateDictionaryFromWorkItem(workItem);
+                Dictionary<string, object> tokenList = workItem.CreateDictionaryFromWorkItem();
                 if (startingParameters != null)
                 {
                     foreach (var parameter in startingParameters)
@@ -139,81 +139,6 @@ namespace WordExporter.Core.WordManipulation
 
             AppendOtherWordFile(tempFile, insertPageBreak);
             File.Delete(tempFile);
-        }
-
-        /// <summary>
-        /// Simply create a dictionary of substitution values from all the fields
-        /// of the work item.
-        /// </summary>
-        /// <param name="workItem"></param>
-        /// <returns></returns>
-        private Dictionary<String, Object> CreateDictionaryFromWorkItem(WorkItem workItem)
-        {
-            var retValue = new Dictionary<String, Object>(StringComparer.OrdinalIgnoreCase);
-            retValue["title"] = workItem.Title;
-            retValue["id"] = workItem.Id;
-            //Some help to avoid forcing the user to use System.AssignedTo etc for most commonly used fields.
-            retValue["description"] = new HtmlSubstitution(workItem.EmbedHtmlContent(workItem.Description));
-            retValue["assignedto"] = workItem.Fields["System.AssignedTo"].Value?.ToString() ?? String.Empty;
-            retValue["createdby"] = workItem.Fields["System.CreatedBy"].Value?.ToString() ?? String.Empty;
-
-            HashSet<String> specialFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "description",
-            };
-
-            //All the fields will be set in raw format.
-            foreach (Field field in workItem.Fields)
-            {
-                if (specialFields.Contains(field.Name))
-                    continue; //This is a special field, ignore.
-
-                var value = GetValue(field);
-
-                retValue[field.Name] = field.Value?.ToString() ?? String.Empty;
-                retValue[field.ReferenceName] = field.Value?.ToString() ?? String.Empty;
-            }
-
-            //ok some of the historical value could be of interests, as an example the last user timestamp for each state change
-            //is an information that can be interesting
-            if (workItem.Revisions.Count > 0)
-            {
-                foreach (Revision revision in workItem.Revisions)
-                {
-                    var fieldsChanged = revision
-                        .Fields
-                        .OfType<Field>()
-                        .Where(f => f.IsChangedInRevision)
-                        .ToList();
-                    var changedBy = revision.Fields["Changed By"].Value;
-                    var changedDate = revision.Fields["Changed Date"].Value;
-                    foreach (var field in fieldsChanged)
-                    {
-                        if (field.ReferenceName.Equals("system.state", StringComparison.OrdinalIgnoreCase))
-                        {
-                            retValue[$"statechange.{field.Value.ToString().ToLower()}.author"] = changedBy;
-                            retValue[$"statechange.{field.Value.ToString().ToLower()}.date"] = ((DateTime) changedDate).ToShortDateString();
-                        }
-                        else if (field.ReferenceName.Equals("system.areapath", StringComparison.OrdinalIgnoreCase))
-                        {
-                            retValue[$"lastareapathchange.author"] = changedBy;
-                            retValue[$"lastareapathchange.date"] = ((DateTime)changedDate).ToShortDateString();
-                        }
-                    }
-                }
-            }
-            return retValue;
-        }
-
-        private String GetValue(Field field)
-        {
-            if (field.Value == null)
-                return String.Empty;
-
-            if (field.Value is DateTime dateTime)
-                return dateTime.ToShortDateString();
-
-            return field.Value.ToString();
         }
 
         #endregion
@@ -327,7 +252,7 @@ namespace WordExporter.Core.WordManipulation
                         //Each cycle runs can be changed
                         List<RunMatch> runs = GetAllRunMatches(paragraph);
                         var paragraphInnerText = paragraph.InnerText;
-                        match = Regex.Match(paragraphInnerText, @"\{\{" + replace.Key.Trim('}', '{') + @"(\:[0-9a-zA-Z_-]*?)?\}\}");
+                        match = Regex.Match(paragraphInnerText, @"\{\{" + replace.Key.Trim('}', '{') + @"(\:[0-9a-zA-Z_-]*?)?\}\}", RegexOptions.IgnoreCase);
                         if (match?.Success == true)
                         {
                             //ok we found a match, we need to grab all the run that encompass this match
@@ -809,7 +734,7 @@ namespace WordExporter.Core.WordManipulation
                 foreach (var workItem in workItems)
                 {
                     List<String> row = new List<string>();
-                    var properties = this.CreateDictionaryFromWorkItem(workItem);
+                    var properties = workItem.CreateDictionaryFromWorkItem();
                     foreach (var field in cellFields)
                     {
                         if (properties.TryGetValue(field, out var value))
@@ -842,50 +767,79 @@ namespace WordExporter.Core.WordManipulation
             Boolean skipHeader,
             IEnumerable<WorkItem> workItems)
         {
+            if (!workItems.Any())
+                return this;
+
             List<Dictionary<String, Object>> workItemCellsData = new List<Dictionary<String, Object>>();
-            List<Int32> parentList = new List<Int32>();
-            foreach (var workItem in workItems)
-            {
-                RelatedLink parentLink = GetParentLink(workItem);
-                if (parentLink != null)
-                {
-                    parentList.Add(parentLink.RelatedWorkItemId);
-                }
-            }
+            List<Int32> parentList = workItems
+                .Select(w => GetParentLink(w))
+                .Where(l => l != null)
+                .Select(l => l.RelatedWorkItemId)
+                .ToList();
 
-            //ok now we need to grab all parent link, just to grab 
-            var query = $@"SELECT
-    [System.Id],
-    [System.Title]
-FROM workitems
-WHERE [System.Id] IN ({String.Join(",", parentList)})
-ORDER BY [System.Id]
-";
-            //ok, query all the parents
-            var parentWorkItems = ConnectionManager.Instance.WorkItemStore.Query(query)
-                .OfType<WorkItem>()
-                .ToDictionary(w => w.Id);
+            Dictionary<int, WorkItem> parentWorkItems = GetParentsInformation(parentList);
+
+            List<Int32> granParentList = parentWorkItems.Values
+               .Select(w => GetParentLink(w))
+               .Where(l => l != null)
+               .Select(l => l.RelatedWorkItemId)
+               .ToList();
+
+            Dictionary<int, WorkItem> granParentWorkItems = GetParentsInformation(granParentList);
 
             foreach (var workItem in workItems)
             {
-                var parameters = CreateDictionaryFromWorkItem(workItem);
+                var parameters = workItem.CreateDictionaryFromWorkItem();
                 RelatedLink parentLink = GetParentLink(workItem);
+                parameters["parent.title"] = String.Empty;
+                parameters["parent.id"] = String.Empty;
+                parameters["parent.parent.title"] = String.Empty;
+                parameters["parent.parent.id"] = String.Empty;
                 if (parentWorkItems.TryGetValue(parentLink?.RelatedWorkItemId ?? 0, out var parent))
                 {
                     parameters["parent.title"] = parent.Title;
                     parameters["parent.id"] = parent.Id;
+                    var granParentLink = GetParentLink(parent);
+                    if (granParentWorkItems.TryGetValue(granParentLink?.RelatedWorkItemId ?? 0, out var granParent))
+                    {
+                        parameters["parent.parent.title"] = granParent.Title;
+                        parameters["parent.parent.id"] = granParent.Id;
+                    }
                 }
                 workItemCellsData.Add(parameters);
             }
             return FillCompositeTable(skipHeader, workItemCellsData);
         }
 
+        private static Dictionary<int, WorkItem> GetParentsInformation(List<int> parentList)
+        {
+            //optimize, load all parents in a dictionary with a single query
+            Dictionary<Int32, WorkItem> parentWorkItems = new Dictionary<int, WorkItem>();
+            if (parentList.Count > 0)
+            {
+                //ok now we need to grab all parent link, just to grab 
+                var query = $@"SELECT
+    [System.Id],
+    [System.Title]
+FROM workitems
+WHERE [System.Id] IN ({String.Join(",", parentList)})
+ORDER BY [System.Id]
+";
+                //ok, query all the parents
+                parentWorkItems = ConnectionManager.Instance.WorkItemStore.Query(query)
+                    .OfType<WorkItem>()
+                    .ToDictionary(w => w.Id);
+            }
+
+            return parentWorkItems;
+        }
+
         private static RelatedLink GetParentLink(WorkItem workItem)
         {
             return workItem
-                                .Links
-                                .OfType<RelatedLink>()
-                                .SingleOrDefault(l => l.LinkTypeEnd.Name == "Parent");
+                .Links
+                .OfType<RelatedLink>()
+                .SingleOrDefault(l => l.LinkTypeEnd.Name == "Parent");
         }
 
         #endregion

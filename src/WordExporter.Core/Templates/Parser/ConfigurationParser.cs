@@ -1,9 +1,6 @@
 ﻿using Sprache;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WordExporter.Core.Templates.Parser
 {
@@ -13,7 +10,7 @@ namespace WordExporter.Core.Templates.Parser
         /// Keyvalue is such a typical construct that is defined in the configuration parser
         /// TODO: refactor to a common parser utility
         /// </summary>
-        public static Parser<KeyValue> KeyValue =
+        public readonly static Parser<KeyValue> KeyValue =
         (
             from key in Parse.CharExcept(':').Many().Text()
             from separator in Parse.Char(':')
@@ -26,7 +23,7 @@ namespace WordExporter.Core.Templates.Parser
         /// Keyvalue is such a typical construct that is defined in the configuration parser
         /// TODO: refactor to a common parser utility
         /// </summary>
-        public static Parser<KeyValue> MultiLineKeyValue =
+        public readonly static Parser<KeyValue> MultiLineKeyValue =
         (
             from key in Parse.CharExcept(':').Many().Text()
             from separator in Parse.Char(':')
@@ -38,11 +35,11 @@ namespace WordExporter.Core.Templates.Parser
             select new KeyValue(key.Trim(), value.Trim(' ', '\"', '\n', '\t', '\r'))
         ).Named("keyvalue");
 
-        public static Parser<IEnumerable<KeyValue>> KeyValueList =
+        public readonly static Parser<IEnumerable<KeyValue>> KeyValueList =
              from keyValue in MultiLineKeyValue.Or(KeyValue).Many()
              select keyValue;
 
-        public static Parser<KeyValue> ParameterSet =
+        public readonly static Parser<KeyValue> ParameterSet =
        (
            from key in Parse.CharExcept('=').Many().Text()
            from separator in Parse.Char('=')
@@ -51,11 +48,11 @@ namespace WordExporter.Core.Templates.Parser
            select new KeyValue(key.Trim(' ', '|'), value.Trim(' ', '\"', '\n', '\t', '\r', '|'))
        ).Named("parameterSet");
 
-        public static Parser<IEnumerable<KeyValue>> ParameterSetList =
+        public readonly static Parser<IEnumerable<KeyValue>> ParameterSetList =
              from keyValue in ParameterSet.Many()
              select keyValue;
 
-        public static readonly Parser<Section> SectionParser =
+        public readonly static Parser<Section> SectionParser =
         (
             from open in Parse.String("[[")
             from section in Parse.AnyChar.Except(Parse.Char(']')).Many().Text()
@@ -65,7 +62,7 @@ namespace WordExporter.Core.Templates.Parser
             select Section.Create(section, restOfSection)
         ).Named("section");
 
-        internal static Parser<TemplateDefinition> TemplateDefinition =
+        internal readonly static Parser<TemplateDefinition> TemplateDefinition =
              from sections in SectionParser.AtLeastOnce()
              select new TemplateDefinition(sections);
 

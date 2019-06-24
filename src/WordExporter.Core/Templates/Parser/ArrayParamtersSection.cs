@@ -2,22 +2,23 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WordExporter.Core.WordManipulation;
 
 namespace WordExporter.Core.Templates.Parser
 {
-    public sealed class ParameterSection : Section
+    /// <summary>
+    /// Formally identical to <see cref="ParameterSection"/> but it is keep
+    /// separated to allow for explicit syntax differentiation.
+    /// </summary>
+    public sealed class ArrayParameterSection : Section
     {
-        private ParameterSection()
+        private ArrayParameterSection()
         {
         }
 
         /// <summary>
         /// Dictionary of parameters and default values
         /// </summary>
-        public Dictionary<String, String> Parameters { get; private set; }
+        public Dictionary<String, String> ArrayParameters { get; private set; }
 
         #region syntax
 
@@ -48,11 +49,11 @@ namespace WordExporter.Core.Templates.Parser
             select new KeyValuePair<String, String>(parameterName.Trim(), defaultValue.GetOrElse("").Trim(' ', '\"', '\n', '\t', '\r'))
         ).Named("param");
 
-        public readonly static Parser<ParameterSection> Parser =
+        public readonly static Parser<ArrayParameterSection> Parser =
              from parameters in Parameter.Many()
-             select new ParameterSection()
+             select new ArrayParameterSection()
              {
-                 Parameters = parameters.ToDictionary(p => p.Key, p => p.Value)
+                 ArrayParameters = parameters.ToDictionary(p => p.Key, p => p.Value)
              };
 
         #endregion

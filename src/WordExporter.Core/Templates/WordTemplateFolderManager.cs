@@ -103,7 +103,7 @@ namespace WordExporter.Core.Templates
         {
             String fileName = Path.Combine(_templateFolder, localFileName);
             if (!File.Exists(fileName))
-                throw new ArgumentException($"File {nameof(fileName)} does not exists.", nameof(fileName));
+                throw new ArgumentException($"File {fileName} does not exists.", fileName);
 
             var tempFile = Path.GetTempPath() + Guid.NewGuid().ToString() + Path.GetExtension(fileName);
             File.Copy(fileName, tempFile);
