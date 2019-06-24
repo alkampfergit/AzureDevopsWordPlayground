@@ -66,6 +66,7 @@ namespace WordExporter.UI.ViewModel
                 if (!String.IsNullOrEmpty(_aiKey))
                 {
                     _telemetryClient = new TelemetryClient();
+                    _telemetryClient.InstrumentationKey = _aiKey;
                     TelemetryConfiguration.Active.InstrumentationKey = _aiKey;
                 }
                 StatePersister.Instance.Save<String>("aiKey", _aiKey);
