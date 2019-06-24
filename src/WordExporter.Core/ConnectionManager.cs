@@ -1,4 +1,5 @@
 ﻿using Microsoft.TeamFoundation.Client;
+using Microsoft.TeamFoundation.Server;
 using Microsoft.TeamFoundation.WorkItemTracking.Client;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
@@ -6,7 +7,9 @@ using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
+using WindowsCredential = Microsoft.VisualStudio.Services.Common.WindowsCredential;
 
 namespace WordExporter.Core
 {
@@ -33,6 +36,8 @@ namespace WordExporter.Core
         private void InitBaseServices()
         {
             _workItemStore = _tfsCollection.GetService<WorkItemStore>();
+            _commonStructureService = _tfsCollection.GetService<ICommonStructureService>();
+            _commonStructureService4 = _tfsCollection.GetService<ICommonStructureService4>();
         }
 
         /// <summary>
@@ -49,17 +54,33 @@ namespace WordExporter.Core
 
         public async Task ConnectAsync(string accountUri)
         {
-            Uri _uri = new Uri(accountUri);
+            Uri uri = new Uri(accountUri);
 
             var creds = new VssClientCredentials(
                 new Microsoft.VisualStudio.Services.Common.WindowsCredential(false),
                 new VssFederatedCredential(true),
                 CredentialPromptType.PromptIfNeeded);
 
-            _vssConnection = new VssConnection(_uri, creds);
+            _vssConnection = new VssConnection(uri, creds);
             await _vssConnection.ConnectAsync().ConfigureAwait(false);
 
-            _tfsCollection = new TfsTeamProjectCollection(_uri, creds);
+            _tfsCollection = new TfsTeamProjectCollection(uri, creds);
+            _tfsCollection.EnsureAuthenticated();
+            InitBaseServices();
+        }
+
+        public async Task ConnectAsyncWithNetworkCredentials(
+            string accountUri, 
+            NetworkCredential credential)
+        {
+            Uri uri = new Uri(accountUri);
+
+            var creds = new VssClientCredentials(new WindowsCredential(credential));
+
+            _vssConnection = new VssConnection(uri, creds);
+            await _vssConnection.ConnectAsync().ConfigureAwait(false);
+
+            _tfsCollection = new TfsTeamProjectCollection(uri, creds);
             _tfsCollection.EnsureAuthenticated();
             InitBaseServices();
         }
@@ -67,8 +88,12 @@ namespace WordExporter.Core
         private TfsTeamProjectCollection _tfsCollection;
         private VssConnection _vssConnection;
         private WorkItemStore _workItemStore;
+        private ICommonStructureService _commonStructureService;
+        private ICommonStructureService4 _commonStructureService4;
 
         public WorkItemStore WorkItemStore => _workItemStore;
+        public ICommonStructureService CommonStructureService => _commonStructureService;
+        public ICommonStructureService4 CommonStructureService4 => _commonStructureService4;
 
         private bool ConnectToTfs(String accountUri, String accessToken)
         {
@@ -91,6 +116,14 @@ namespace WordExporter.Core
         public IEnumerable<String> GetTeamProjectsNames()
         {
             return _workItemStore.Projects.OfType<Project>().Select(_ => _.Name);
+        }
+
+        public Project GetTeamProject(String name)
+        {
+            return _workItemStore.Projects
+                .OfType<Project>()
+                .Where(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault();
         }
 
         public T GetClient<T>() where T : VssHttpClientBase

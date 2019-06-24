@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:WordExporter.UI"
         xmlns:support="clr-namespace:WordExporter.UI.Support"
         mc:Ignorable="d"
         DataContext="{Binding Main, Source={StaticResource Locator}}"
@@ -14,13 +13,14 @@
             <support:InvertBoolConverter/>
             <support:BooleanToCollapsedConverter />
         </support:ValueConverterGroup>
-        
+
         <support:BooleanToCollapsedConverter x:Key="booleanToVisibilityConverter" />
         <support:NullVisibilityConverter x:Key="nullVisibilityConverter" />
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="26"/>
             <RowDefinition Height="26"/>
             <RowDefinition Height="26"/>
             <RowDefinition Height="26" />
@@ -51,6 +51,26 @@
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <CheckBox VerticalAlignment="Center" Grid.Column="0" IsChecked="{Binding UseNetworkCredential}">Use Network Credentials</CheckBox>
+            <Label Grid.Column="1">User Name</Label>
+            <TextBox Grid.Column="2" Text="{Binding CredentialViewModel.UserName}"></TextBox>
+            <Label Grid.Column="3">Password</Label>
+
+            <PasswordBox Grid.Column="4" 
+                x:Name="PasswordBox"
+                support:PasswordBoxPassword.EncryptedPassword="{Binding CredentialViewModel.Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                PasswordChanged="PasswordBox_OnPasswordChanged"></PasswordBox>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="auto"/>
                 <ColumnDefinition Width="50"/>
                 <ColumnDefinition Width="auto"/>
                 <ColumnDefinition Width="*"/>
@@ -62,7 +82,7 @@
             <Label Grid.Column="3" Content="{Binding Status}"></Label>
         </Grid>
 
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="110"/>
                 <ColumnDefinition Width="*"/>
@@ -83,7 +103,7 @@
             <Button Grid.Column="5"  Command="{Binding Dump}">Dump</Button>
         </Grid>
 
-        <Grid Grid.Row="3" 
+        <Grid Grid.Row="4" 
               Visibility="{Binding SelectedTemplate, Converter={StaticResource nullVisibilityConverter}}">
 
             <Grid Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource booleanToVisibilityConverter }}">
@@ -151,23 +171,7 @@
 
                 <GridSplitter Grid.Row="1" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
 
-                <DataGrid Grid.Row="2"  ItemsSource="{Binding ArrayParameters}" AutoGenerateColumns="False">
-                    <DataGrid.Columns>
-                        <DataGridTemplateColumn Width="300" Header="Name">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Label Content="{Binding Name}" Height="26" />
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-
-                        <DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />
-                    </DataGrid.Columns>
-                </DataGrid>
-
-                <GridSplitter Grid.Row="3" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
-
-                <ListView Grid.Row="4" ItemsSource="{Binding Iterations}" >
+                <ListView Grid.Row="2" ItemsSource="{Binding Iterations}" >
                     <ListView.View>
                         <GridView>
                             <GridViewColumn Width="30">
@@ -185,6 +189,22 @@
                         </GridView>
                     </ListView.View>
                 </ListView>
+
+                <GridSplitter Grid.Row="3" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
+
+                <DataGrid Grid.Row="4"  ItemsSource="{Binding ArrayParameters}" AutoGenerateColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="300" Header="Name">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Label Content="{Binding Name}" Height="26" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Binding="{Binding Value}" Width="*" Header="Value" />
+                    </DataGrid.Columns>
+                </DataGrid>
             </Grid>
 
             <Grid Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource InvertAndVisibilitate}}">
@@ -232,7 +252,6 @@
                     </ListView.View>
                 </ListView>
             </Grid>
-
         </Grid>
     </Grid>
 </Window>

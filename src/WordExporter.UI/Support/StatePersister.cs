@@ -1,25 +1,23 @@
 ﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WordExporter.UI.Support
 {
     public class StatePersister
     {
-        private Dictionary<String, Object> _config;
-        private FileInfo _configFile;
+        private readonly Dictionary<String, Object> _config;
+        private readonly FileInfo _configFile;
 
-        public static StatePersister Instance = new StatePersister();
+        public static readonly StatePersister Instance = new StatePersister();
 
         private StatePersister()
         {
-            var fileName = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "wordexporter.ui.json";
-             _configFile = new FileInfo(fileName);
+            var fileName = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "wordexporter.ui.json");
+            _configFile = new FileInfo(fileName);
             if (!_configFile.Exists)
             {
                 _config = new Dictionary<string, object>();
@@ -43,7 +41,9 @@ namespace WordExporter.UI.Support
         public T Load<T>(String key)
         {
             if (_config.TryGetValue(key, out var obj))
+            {
                 return (T)obj;
+            }
 
             return default(T);
         }

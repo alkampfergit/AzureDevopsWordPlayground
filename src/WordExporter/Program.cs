@@ -37,6 +37,7 @@ namespace WordExporter
 
             ConnectionManager connection = new ConnectionManager(options.ServiceAddress, options.GetAccessToken());
 
+            DumpAllIterations(connection);
             //DumpAllTeamProjects(connection);
 
             if (String.IsNullOrEmpty(options.TemplateFolder))
@@ -52,6 +53,16 @@ namespace WordExporter
             {
                 Console.WriteLine("Execution completed, press a key to continue");
                 Console.ReadKey();
+            }
+        }
+
+        private static void DumpAllIterations(ConnectionManager connection)
+        {
+            var im = new IterationManager(connection);
+            var iterations = im.GetAllIterationsForTeamProject("cmmi playground");
+            foreach (var iteration in iterations)
+            {
+                Console.WriteLine(iteration.Path);
             }
         }
 

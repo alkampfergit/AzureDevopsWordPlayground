@@ -32,8 +32,7 @@ namespace WordExporter.UI.ViewModel
             ServiceLocator.SetLocatorProvider(() => SimpleIoc.Default);
 
             SimpleIoc.Default.Register<MainViewModel>();
-
-            SimpleIoc.Default.Register<MainViewModel>();
+            SimpleIoc.Default.Register<LogViewModelCollector>();
         }
 
         public MainViewModel Main
@@ -43,7 +42,15 @@ namespace WordExporter.UI.ViewModel
                 return ServiceLocator.Current.GetInstance<MainViewModel>();
             }
         }
-       
+
+        public LogViewModelCollector LogCollector
+        {
+            get
+            {
+                return ServiceLocator.Current.GetInstance<LogViewModelCollector>();
+            }
+        }
+
         public static void Cleanup()
         {
             // TODO Clear the ViewModels

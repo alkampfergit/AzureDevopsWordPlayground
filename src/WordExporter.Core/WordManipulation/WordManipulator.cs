@@ -791,6 +791,10 @@ namespace WordExporter.Core.WordManipulation
             {
                 var parameters = workItem.CreateDictionaryFromWorkItem();
                 RelatedLink parentLink = GetParentLink(workItem);
+                parameters["parent.title"] = String.Empty;
+                parameters["parent.id"] = String.Empty;
+                parameters["parent.parent.title"] = String.Empty;
+                parameters["parent.parent.id"] = String.Empty;
                 if (parentWorkItems.TryGetValue(parentLink?.RelatedWorkItemId ?? 0, out var parent))
                 {
                     parameters["parent.title"] = parent.Title;
