@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using WordExporter.Core.WordManipulation.Support;
 
@@ -124,8 +125,11 @@ namespace WordExporter.Core.WorkItems
                             else
                             {
                                 Log.Debug("found image in html content that point to external image {src}", src);
+                                String downloadedAttachment = "";
+                                String extension = "";
                                 //is it a internal attached images?
                                 var match = Regex.Match(src, @"FileID=(?<id>\d*)");
+
                                 if (match.Success)
                                 {
                                     var attachment = workItem.Attachments
@@ -135,12 +139,26 @@ namespace WordExporter.Core.WorkItems
                                     {
                                         //ok we can embed in the image as base64
                                         WorkItemServer wise = workItem.Store.TeamProjectCollection.GetService<WorkItemServer>();
-                                        var downloadedAttachment = wise.DownloadFile(attachment.Id);
-                                        byte[] byteContent = File.ReadAllBytes(downloadedAttachment);
-                                        String base64Encoded = Convert.ToBase64String(byteContent);
-                                        var newSrcValue = $"data:image/{attachment.Extension.Trim('.')};base64,{base64Encoded}";
-                                        image.SetAttributeValue("src", newSrcValue);
+                                        downloadedAttachment = wise.DownloadFile(attachment.Id);
+                                        extension = attachment.Extension.Trim('.');
                                     }
+                                }
+                                //else
+                                //{
+                                //    using (var client = new WebClient())
+                                //    {
+                                //        downloadedAttachment = Path.GetTempFileName() + ".png";
+                                //        extension = "png";
+                                //        client.DownloadFile(src, downloadedAttachment);
+                                //    }
+                                //}
+
+                                if (!String.IsNullOrEmpty(downloadedAttachment))
+                                {
+                                    byte[] byteContent = File.ReadAllBytes(downloadedAttachment);
+                                    String base64Encoded = Convert.ToBase64String(byteContent);
+                                    var newSrcValue = $"data:image/{extension};base64,{base64Encoded}";
+                                    image.SetAttributeValue("src", newSrcValue);
                                 }
                             }
                         }
@@ -153,7 +171,7 @@ namespace WordExporter.Core.WorkItems
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Unable to generate emdettable html: {htmlContent}", htmlContent);
+                Log.Error(ex, "Unable to generate embeddable html: {htmlContent}", htmlContent);
                 return "Error converting HTML text: " + ex.Message;
             }
         }
