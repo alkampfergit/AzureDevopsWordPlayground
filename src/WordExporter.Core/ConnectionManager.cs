@@ -130,5 +130,10 @@ namespace WordExporter.Core
         {
             return _vssConnection.GetClient<T>();
         }
+
+        public object GetAuthenticatedUser()
+        {
+            return _tfsCollection.AuthorizedIdentity.DisplayName;
+        }
     }
 }

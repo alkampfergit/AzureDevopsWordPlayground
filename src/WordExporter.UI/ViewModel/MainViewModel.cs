@@ -328,6 +328,20 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        private Boolean _showIterationParameters;
+
+        public Boolean ShowIterationParameters
+        {
+            get
+            {
+                return _showIterationParameters;
+            }
+            set
+            {
+                Set<Boolean>(() => this.ShowIterationParameters, ref _showIterationParameters, value);
+            }
+        }
+
         public ICommand Connect { get; private set; }
 
         public ICommand GetQueries { get; private set; }
@@ -649,6 +663,9 @@ namespace WordExporter.UI.ViewModel
                     parameters[parameter.Name] = parameter.Value;
                 }
             }
+            //now some standard parameter
+            parameters["CurrentDate"] = DateTime.Now.ToString("dd/MM/yyyy");
+            parameters["CurrentUser"] = ConnectionManager.Instance.GetAuthenticatedUser();
             return parameters;
         }
 
@@ -681,6 +698,7 @@ namespace WordExporter.UI.ViewModel
         {
             Parameters.Clear();
             ArrayParameters.Clear();
+            ShowIterationParameters = false;
             if (SelectedTemplate == null)
             {
                 return;
@@ -690,7 +708,15 @@ namespace WordExporter.UI.ViewModel
             {
                 foreach (var parameter in SelectedTemplate.Parameters)
                 {
+                    if (parameter.AllowedValues?.Length > 0)
+                    {
+                        parameter.Value = parameter.AllowedValues[0];
+                    }
                     Parameters.Add(parameter);
+                    if (parameter.Type.Equals("iterations", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ShowIterationParameters = true;
+                    }
                 }
 
                 foreach (var parameter in SelectedTemplate.ArrayParameters)

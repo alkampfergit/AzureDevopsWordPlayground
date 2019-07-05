@@ -94,9 +94,12 @@ namespace WordExporter.Core.Templates.Parser
 
             foreach (var query in queries)
             {
-                var workItems = workItemManger.ExecuteQuery(query).Take(Limit);
+                var workItems = workItemManger.ExecuteQuery(query)
+                    .Take(Limit)
+                    .ToList();
 
-                if (String.IsNullOrEmpty(TableTemplate))
+                //Add the table only if whe really have work item selected.
+                if (String.IsNullOrEmpty(TableTemplate) && workItems.Count > 0)
                 {
                     foreach (var workItem in workItems)
                     {

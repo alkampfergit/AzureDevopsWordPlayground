@@ -111,7 +111,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition></RowDefinition>
                     <RowDefinition Height="4"></RowDefinition>
-                    <RowDefinition></RowDefinition>
+                    <RowDefinition Height="*"></RowDefinition>
                     <RowDefinition Height="4"></RowDefinition>
                     <RowDefinition></RowDefinition>
                 </Grid.RowDefinitions>
@@ -145,6 +145,7 @@
 
                                             <ComboBox SelectedValue="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                                   ItemsSource="{Binding AllowedValues}"
+                                                      
                                                   HorizontalAlignment="Stretch"
                                                    Visibility="{Binding HasAllowedValues, Converter={StaticResource booleanToVisibilityConverter }}"
                                                   />
@@ -171,7 +172,8 @@
 
                 <GridSplitter Grid.Row="1" ResizeBehavior="PreviousAndNext"  Grid.ColumnSpan="2" ShowsPreview="True" Height="4" Background="black" HorizontalAlignment="Stretch" VerticalAlignment="Top"  ResizeDirection="Rows"/>
 
-                <ListView Grid.Row="2" ItemsSource="{Binding Iterations}" >
+                <ListView Grid.Row="2" ItemsSource="{Binding Iterations}" 
+                          Visibility="{Binding ShowIterationParameters, Converter={StaticResource booleanToVisibilityConverter }}">
                     <ListView.View>
                         <GridView>
                             <GridViewColumn Width="30">
