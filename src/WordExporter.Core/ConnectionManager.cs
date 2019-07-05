@@ -135,5 +135,10 @@ namespace WordExporter.Core
         {
             return _tfsCollection.AuthorizedIdentity.DisplayName;
         }
+
+        public ICredentials GetCredentials()
+        {
+            return _tfsCollection.Credentials;
+        }
     }
 }
