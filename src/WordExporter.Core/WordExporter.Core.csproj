@@ -304,6 +304,7 @@
   <ItemGroup>
     <Compile Include="ConnectionManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Registry.cs" />
     <Compile Include="Support\DictionaryUtils.cs" />
     <Compile Include="Support\VssClientCredentialClientStorage.cs" />
     <Compile Include="Support\WorkItemExtension.cs" />
@@ -320,6 +321,7 @@
     <Compile Include="Templates\TemplateExecutor.cs" />
     <Compile Include="Templates\TemplateManager.cs" />
     <Compile Include="Templates\WordTemplateFolderManager.cs" />
+    <Compile Include="WordExporterOptions.cs" />
     <Compile Include="WordManipulation\Support\HtmlSubstitution.cs" />
     <Compile Include="WordManipulation\Support\ImageSubstitution.cs" />
     <Compile Include="WordManipulation\Support\RunMatch.cs" />

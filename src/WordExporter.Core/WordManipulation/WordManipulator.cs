@@ -115,9 +115,9 @@ namespace WordExporter.Core.WordManipulation
         /// <param name="startingParameters">These parameters will be added to dictionary
         /// with all fields of work item.</param>
         public void InsertWorkItem(
-            WorkItem workItem, 
+            WorkItem workItem,
             String workItemTemplateFile,
-            Boolean insertPageBreak = true, 
+            Boolean insertPageBreak = true,
             Dictionary<string, object> startingParameters = null)
         {
             //ok we need to open the template, give it a new name, perform substitution and finally append to the existing document

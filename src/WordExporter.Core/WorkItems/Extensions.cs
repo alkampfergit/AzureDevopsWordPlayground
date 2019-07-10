@@ -26,7 +26,7 @@ namespace WordExporter.Core.WorkItems
             retValue["title"] = workItem.Title;
             retValue["id"] = workItem.Id;
             //Some help to avoid forcing the user to use System.AssignedTo etc for most commonly used fields.
-            retValue["description"] = new HtmlSubstitution(workItem.GenerateHtmlForWordEmbedding(workItem.Description));
+            retValue["description"] = new HtmlSubstitution(workItem.GenerateHtmlForWordEmbedding(workItem.Description, Registry.Options.NormalizeFontInDescription));
             retValue["description.txt"] = GetTxtFromHtmlContent(workItem.Description);
             retValue["assignedto"] = workItem.Fields["System.AssignedTo"].Value?.ToString() ?? String.Empty;
             retValue["createdby"] = workItem.Fields["System.CreatedBy"].Value?.ToString() ?? String.Empty;
@@ -76,7 +76,6 @@ namespace WordExporter.Core.WorkItems
             return retValue;
         }
 
-
         public static String GetValue(this Field field)
         {
             if (field.Value == null)
@@ -101,7 +100,10 @@ namespace WordExporter.Core.WorkItems
             return doc.DocumentNode.InnerText;
         }
 
-        public static String GenerateHtmlForWordEmbedding(this WorkItem workItem, String htmlContent)
+        public static String GenerateHtmlForWordEmbedding(
+            this WorkItem workItem, 
+            String htmlContent,
+            Boolean normalizeFont)
         {
             try
             {
@@ -118,7 +120,10 @@ namespace WordExporter.Core.WorkItems
                 }
 
                 CollapseNodeWithText(doc, "table");
-
+                if (normalizeFont)
+                {
+                    RemoveAttributeFromDocument(doc, "style");
+                }
                 return doc.DocumentNode.OuterHtml;
             }
             catch (Exception ex)
@@ -147,7 +152,7 @@ namespace WordExporter.Core.WorkItems
                         String downloadedAttachment = "";
                         String extension = "";
                         //is it a internal attached images?
-                        var match = Regex.Match(src, @"FileID=(?<id>\d*)");
+                        var match = Regex.Match(src, @"FileID=(?<id>\d*)", RegexOptions.IgnoreCase);
 
                         if (match.Success)
                         {
@@ -162,15 +167,19 @@ namespace WordExporter.Core.WorkItems
                                 extension = attachment.Extension.Trim('.');
                             }
                         }
-                        else
+                        else if ((match = Regex.Match(src, @"FileName=(?<id>[^&;]*)", RegexOptions.IgnoreCase)).Success)
                         {
                             using (var client = new WebClient())
                             {
                                 client.Credentials = ConnectionManager.Instance.GetCredentials();
-                                downloadedAttachment = Path.GetTempFileName() + ".png";
-                                extension = "png";
+                                extension = Path.GetExtension(match.Groups["id"].Value);
+                                downloadedAttachment = Path.GetTempFileName() + extension;
                                 client.DownloadFile(src, downloadedAttachment);
                             }
+                        }
+                        else
+                        {
+                            Log.Error("Unable to embed image with url {src}", src);
                         }
 
                         if (!String.IsNullOrEmpty(downloadedAttachment))
@@ -220,4 +229,3 @@ namespace WordExporter.Core.WorkItems
         }
     }
 }
-    ;

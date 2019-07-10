@@ -342,6 +342,21 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        private Boolean _normalizeFont;
+
+        public Boolean NormalizeFont
+        {
+            get
+            {
+                return _normalizeFont;
+            }
+            set
+            {
+                Registry.Options.NormalizeFontInDescription = value;
+                Set<Boolean>(() => this.NormalizeFont, ref _normalizeFont, value);
+            }
+        }
+
         public ICommand Connect { get; private set; }
 
         public ICommand GetQueries { get; private set; }
@@ -367,7 +382,7 @@ namespace WordExporter.UI.ViewModel
                     await connectionManager.ConnectAsyncWithNetworkCredentials(
                         Address, new NetworkCredential(CredentialViewModel.UserName, CredentialViewModel.Password));
                     StatePersister.Instance.Save("userName", CredentialViewModel.UserName);
-                    StatePersister.Instance.Save("password", EncryptionUtils.Encrypt( CredentialViewModel.Password));
+                    StatePersister.Instance.Save("password", EncryptionUtils.Encrypt(CredentialViewModel.Password));
                     StatePersister.Instance.Save("useNetworkCredential", UseNetworkCredential.ToString());
                 }
 
@@ -629,9 +644,10 @@ namespace WordExporter.UI.ViewModel
 
         private void ManageGeneratedWordFile(string fileName)
         {
-            if (GeneratePdf)
+            using (WordAutomationHelper helper = new WordAutomationHelper(fileName, false))
             {
-                using (WordAutomationHelper helper = new WordAutomationHelper(fileName, false))
+                helper.UpdateAllTocs();
+                if (GeneratePdf)
                 {
                     var pdfFile = helper.ConvertToPdf();
                     if (!String.IsNullOrEmpty(pdfFile))
@@ -640,10 +656,7 @@ namespace WordExporter.UI.ViewModel
                     }
                 }
             }
-            else
-            {
-                System.Diagnostics.Process.Start(fileName);
-            }
+            System.Diagnostics.Process.Start(fileName);
         }
 
         private Dictionary<string, object> PrepareUserParameters()
