@@ -269,14 +269,17 @@ namespace WordExporter.Core.WordManipulation
                             Run runBefore;
                             var textOfFirstRun = runThatMatches.First().Run.InnerText;
                             var startTokenPosition = textOfFirstRun.IndexOf("{{");
+                            Text runText;
                             if (startTokenPosition > 0)
                             {
-                                runBefore = new Run(new Text(textOfFirstRun.Substring(0, startTokenPosition)));
+                                runText = new Text(textOfFirstRun.Substring(0, startTokenPosition));
                             }
                             else
                             {
-                                runBefore = new Run(new Text(String.Empty));
+                                runText = new Text(String.Empty);
                             }
+
+                            runBefore = new Run(runText);
 
                             //now we will add the real replace
 
@@ -447,6 +450,12 @@ namespace WordExporter.Core.WordManipulation
                 {
                     var copy = runProperties.CloneNode(true);
                     run.InsertAt(copy, 0);
+                }
+
+                //For the new run, set all text with preserve space.
+                foreach (var text in run.Descendants<Text>())
+                {
+                    text.Space = SpaceProcessingModeValues.Preserve;
                 }
             }
         }
