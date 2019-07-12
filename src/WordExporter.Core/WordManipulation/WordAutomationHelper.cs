@@ -29,6 +29,7 @@ namespace WordExporter.Core.WordManipulation
             {
                 toc.Update();
             }
+
         }
 
         public String ConvertToPdf()

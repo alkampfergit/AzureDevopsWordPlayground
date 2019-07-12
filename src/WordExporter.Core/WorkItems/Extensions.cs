@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
+using WordExporter.Core.Support;
 using WordExporter.Core.WordManipulation.Support;
 
 namespace WordExporter.Core.WorkItems
@@ -101,7 +102,7 @@ namespace WordExporter.Core.WorkItems
         }
 
         public static String GenerateHtmlForWordEmbedding(
-            this WorkItem workItem, 
+            this WorkItem workItem,
             String htmlContent,
             Boolean normalizeFont)
         {
@@ -123,6 +124,7 @@ namespace WordExporter.Core.WorkItems
                 if (normalizeFont)
                 {
                     RemoveAttributeFromDocument(doc, "style");
+                    doc.RemoveTags(doc.CreateElement("br"), "p");
                 }
                 return doc.DocumentNode.OuterHtml;
             }

@@ -49,6 +49,7 @@ namespace WordExporter.Core.WorkItems
                 Log.Information("About to execute query {query}", realQuery);
                 return _connection.WorkItemStore.Query(realQuery)
                     .OfType<WorkItem>()
+                    .Take(10)
                     .ToList();
             }
             catch (Exception ex)
