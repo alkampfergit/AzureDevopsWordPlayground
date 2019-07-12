@@ -120,7 +120,7 @@ namespace WordExporter.Core.WorkItems
                     }
                 }
 
-                CollapseNodeWithText(doc, "table");
+                //CollapseNodeWithText(doc, "table");
                 if (normalizeFont)
                 {
                     RemoveAttributeFromDocument(doc, "style");
@@ -174,8 +174,8 @@ namespace WordExporter.Core.WorkItems
                             using (var client = new WebClient())
                             {
                                 client.Credentials = ConnectionManager.Instance.GetCredentials();
-                                extension = Path.GetExtension(match.Groups["id"].Value);
-                                downloadedAttachment = Path.GetTempFileName() + extension;
+                                extension = Path.GetExtension(match.Groups["id"].Value).Trim('.');
+                                downloadedAttachment = Path.GetTempFileName() + "." + extension;
                                 client.DownloadFile(src, downloadedAttachment);
                             }
                         }

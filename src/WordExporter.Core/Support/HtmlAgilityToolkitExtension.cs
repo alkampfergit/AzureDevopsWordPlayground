@@ -38,11 +38,11 @@ namespace WordExporter.Core.Support
                         foreach (var child in children)
                         {
                             child.Remove();
-                            parent.AppendChild(child);
+                            parent.InsertBefore(child, nodeToRemove);
                         }
                         if (nodeToAppendAtClosingTag != null)
                         {
-                            parent.AppendChild(nodeToAppendAtClosingTag.Clone());
+                            parent.InsertBefore(nodeToAppendAtClosingTag.Clone(), nodeToRemove);
                         }
                         nodeToRemove.Remove();
                     }

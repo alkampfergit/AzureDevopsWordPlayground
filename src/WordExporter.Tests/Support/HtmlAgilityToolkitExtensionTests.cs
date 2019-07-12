@@ -18,6 +18,16 @@ namespace WordExporter.Tests.Support
         }
 
         [Test]
+        public void SelectivelyRemoveSingleTagWithPrefix()
+        {
+            var doc = new HtmlDocument();
+            doc.LoadHtml("Prefix<p>paragraph</p><p>multiple</p>");
+            doc.RemoveTags(null, "p");
+
+            Assert.That(doc.DocumentNode.InnerHtml, Is.EqualTo("Prefixparagraphmultiple"));
+        }
+
+        [Test]
         public void SelectivelyRemoveSingleTagWithClosingSubstitution()
         {
             var doc = new HtmlDocument();
