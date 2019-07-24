@@ -26,6 +26,7 @@
             <RowDefinition Height="26" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="110"/>
@@ -106,7 +107,23 @@
             <Button Grid.Column="6"  Command="{Binding Dump}">Dump</Button>
         </Grid>
 
-        <Grid Grid.Row="4" 
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="5*"/>
+                <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
+
+            <ListBox Grid.Column="1"
+                 ItemsSource="{Binding Templates}"  >
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+
+                        <CheckBox Content="{Binding TemplateName, Mode=OneWay}" IsChecked="{Binding IsSelected,Mode=TwoWay}" />
+
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <Grid 
               Visibility="{Binding SelectedTemplate, Converter={StaticResource nullVisibilityConverter}}">
 
             <Grid Visibility="{Binding SelectedTemplate.IsScriptTemplate, Converter={StaticResource booleanToVisibilityConverter }}">
@@ -258,5 +275,7 @@
                 </ListView>
             </Grid>
         </Grid>
+        </Grid>
+       
     </Grid>
 </Window>
