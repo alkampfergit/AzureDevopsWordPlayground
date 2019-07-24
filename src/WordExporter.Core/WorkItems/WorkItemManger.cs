@@ -47,15 +47,40 @@ namespace WordExporter.Core.WorkItems
             {
                 var realQuery = query.ToString();
                 Log.Information("About to execute query {query}", realQuery);
-                return _connection.WorkItemStore.Query(realQuery)
-                    .OfType<WorkItem>()
-                    .Take(10)
-                    .ToList();
+
+                if (!realQuery.Contains("workitemLinks"))
+                {
+                    return _connection.WorkItemStore.Query(realQuery)
+                        .OfType<WorkItem>()
+                        .ToList();
+                }
+                return ExecuteLinkedQuery(realQuery);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error executing Query [{message}]\n{query}", ex.Message, query.ToString());
                 throw;
+            }
+        }
+
+        private List<WorkItem> ExecuteLinkedQuery(string realQuery)
+        {
+            var linkQuery = new Query(_connection.WorkItemStore, realQuery);
+            WorkItemLinkInfo[] witLinkInfos = linkQuery.RunLinkQuery();
+            Dictionary<Int32, WorkItem> result = new Dictionary<int, WorkItem>();
+            foreach (WorkItemLinkInfo witinfo in witLinkInfos)
+            {
+                LoadWorkItem(result, witinfo.TargetId);
+                LoadWorkItem(result, witinfo.SourceId);
+            }
+            return result.Values.ToList();
+        }
+
+        private void LoadWorkItem(Dictionary<int, WorkItem> result, int workItemId)
+        {
+            if (workItemId > 0 && !result.ContainsKey(workItemId))
+            {
+                result[workItemId] = _connection.WorkItemStore.GetWorkItem(workItemId);
             }
         }
     }

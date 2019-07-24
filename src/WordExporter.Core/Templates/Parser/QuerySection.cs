@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Microsoft.TeamFoundation.WorkItemTracking.Client;
+using Serilog;
 using Sprache;
 using System;
 using System.Collections.Generic;
@@ -30,6 +31,11 @@ namespace WordExporter.Core.Templates.Parser
             Limit = keyValuePairList.GetIntValue("limit", Int32.MaxValue);
             QueryParameters = new List<Dictionary<string, string>>();
             RepeatForEachIteration = keyValuePairList.GetBooleanValue("repeatForEachIteration");
+            var workItemTypes = keyValuePairList.GetStringValue("workItemTypes");
+            if (!String.IsNullOrEmpty(workItemTypes))
+            {
+                this.WorkItemTypes = workItemTypes.Split(',');
+            }
             foreach (var parameter in keyValuePairList.Where(kvl => kvl.Key == "parameterSet"))
             {
                 var set = ConfigurationParser.ParameterSetList.Parse(parameter.Value);
@@ -49,6 +55,13 @@ namespace WordExporter.Core.Templates.Parser
         /// </summary>
         public String TableTemplate { get; set; }
         public Int32 Limit { get; set; }
+
+        /// <summary>
+        /// If this value contains at least one element, it will used to export
+        /// only the work item in this lists. This allows you to do hierarchical
+        /// queries, but export only childs or fathers.
+        /// </summary>
+        public String[] WorkItemTypes { get; set; }
 
         /// <summary>
         /// <para>
@@ -94,8 +107,14 @@ namespace WordExporter.Core.Templates.Parser
 
             foreach (var query in queries)
             {
-                var workItems = workItemManger.ExecuteQuery(query)
+#if DEBUG
+                Limit = 20;
+#endif
+                List<WorkItem> queryRawReturnValue = workItemManger.ExecuteQuery(query)
                     .Take(Limit)
+                    .ToList();
+                var workItems = queryRawReturnValue
+                    .Where(ShouldExport)
                     .ToList();
 
                 //Add the table only if whe really have work item selected.
@@ -148,7 +167,7 @@ namespace WordExporter.Core.Templates.Parser
             foreach (var query in queries)
             {
                 var workItems = workItemManger.ExecuteQuery(query).Take(Limit);
-                foreach (var workItem in workItems)
+                foreach (var workItem in workItems.Where(ShouldExport))
                 {
                     var values = workItem.CreateDictionaryFromWorkItem();
                     foreach (var value in values)
@@ -157,6 +176,11 @@ namespace WordExporter.Core.Templates.Parser
                     }
                 }
             }
+        }
+
+        private bool ShouldExport(WorkItem workItem)
+        {
+            return WorkItemTypes == null || WorkItemTypes.Contains(workItem.Type.Name);
         }
 
         private static WorkItemManger PrepareWorkItemManager(ConnectionManager connectionManager, string teamProjectName)

@@ -137,6 +137,24 @@ namespace WordExporter.Tests.Templates.Parser
         }
 
         [Test]
+        public void Query_section_parse_filter_work_item_by_type()
+        {
+            var sut = new ConfigurationParser();
+            TemplateDefinition def = sut.ParseTemplateDefinition(
+@"[[query]]
+    query: ""SELECT * FROM WorkItems Where [System.AreaPath] UNDER '{areaPath}' AND [System.IterationPath] UNDER '{iterationPath}'""
+    template/Product Backlog Item: pbix.docx
+    template/Bug: bugaa.docx
+    limit: 1
+    workItemTypes: Product Backlog Item,Feature
+");
+            var querySection = def.AllSections.Single() as QuerySection;
+            Assert.That(querySection.GetTemplateForWorkItem("Product Backlog Item"), Is.EqualTo("pbix.docx"));
+            Assert.That(querySection.GetTemplateForWorkItem("Task"), Is.EqualTo(null));
+            Assert.That(querySection.WorkItemTypes, Is.EquivalentTo(new[] { "Product Backlog Item", "Feature" }));
+        }
+
+        [Test]
         public void Query_section_without_limit_default_to_max_value()
         {
             var sut = new ConfigurationParser();
