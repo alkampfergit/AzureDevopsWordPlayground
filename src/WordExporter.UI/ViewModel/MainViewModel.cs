@@ -195,6 +195,23 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        private TemplateInfo _selectedTemplate;
+
+        /// <summary>
+        /// First template selected.
+        /// </summary>
+        public TemplateInfo SelectedTemplate
+        {
+            get
+            {
+                return _selectedTemplate;
+            }
+            set
+            {
+                Set<TemplateInfo>(() => this.SelectedTemplate, ref _selectedTemplate, value);
+            }
+        }
+
         private String _templateFolder;
 
         public String TemplateFolder
@@ -215,6 +232,7 @@ namespace WordExporter.UI.ViewModel
                         var wordTemplate = TemplateManager.GetWordDefinitionTemplate(template);
                         var info = new TemplateInfo(template, wordTemplate);
                         Templates.Add(info);
+                        info.PropertyChanged += TemplatePropertyChanged;
                     }
                     StatePersister.Instance.Save("main.TemplateFolder", value);
                 }
@@ -223,6 +241,11 @@ namespace WordExporter.UI.ViewModel
                     TemplateManager = null;
                 }
             }
+        }
+
+        private void TemplatePropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            UpdateSelectionOfTemplate();
         }
 
         private TemplateManager _templateManager;
@@ -299,20 +322,20 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
-        private TemplateInfo _selectedTemplate;
+        //private TemplateInfo _selectedTemplate;
 
-        public TemplateInfo SelectedTemplate
-        {
-            get
-            {
-                return _selectedTemplate;
-            }
-            set
-            {
-                Set<TemplateInfo>(() => this.SelectedTemplate, ref _selectedTemplate, value);
-                UpdateSelectionOfTemplate();
-            }
-        }
+        //public TemplateInfo SelectedTemplate
+        //{
+        //    get
+        //    {
+        //        return _selectedTemplate;
+        //    }
+        //    set
+        //    {
+        //        Set<TemplateInfo>(() => this.SelectedTemplate, ref _selectedTemplate, value);
+        //        UpdateSelectionOfTemplate();
+        //    }
+        //}
 
         private Boolean _generatePdf;
 
@@ -489,7 +512,7 @@ namespace WordExporter.UI.ViewModel
                 return;
             }
 
-            if (SelectedTemplate == null)
+            if (!Templates.Any(t => t.IsSelected))
             {
                 return;
             }
@@ -518,7 +541,7 @@ namespace WordExporter.UI.ViewModel
                 return;
             }
 
-            if (SelectedTemplate == null)
+            if (!Templates.Any(t => t.IsSelected))
             {
                 return;
             }
@@ -542,102 +565,108 @@ namespace WordExporter.UI.ViewModel
 
         private void InnerExecuteDump()
         {
-            var fileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()) + ".txt";
-            if (SelectedTemplate.IsScriptTemplate)
+            foreach (var selectedTemplate in Templates.Where(t => t.IsSelected))
             {
-                var executor = new TemplateExecutor(SelectedTemplate.WordTemplateFolderManager);
-
-                //now we need to ask user parameter value
-                Dictionary<string, object> parameters = PrepareUserParameters();
-                executor.DumpWorkItem(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
-            }
-            else
-            {
-                var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
-                if (selected == null || selected.Count == 0)
+                var fileName = Path.Combine(Path.GetTempPath(), selectedTemplate.TemplateName, Guid.NewGuid().ToString()) + ".txt";
+                if (selectedTemplate.IsScriptTemplate)
                 {
-                    return;
+                    var executor = new TemplateExecutor(selectedTemplate.WordTemplateFolderManager);
+
+                    //now we need to ask user parameter value
+                    Dictionary<string, object> parameters = PrepareUserParameters();
+                    executor.DumpWorkItem(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
                 }
-
-                var sb = new StringBuilder();
-                foreach (var workItemResult in selected)
+                else
                 {
-                    var workItem = workItemResult.WorkItem;
-                    var values = workItem.CreateDictionaryFromWorkItem();
-                    foreach (var value in values)
+                    var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
+                    if (selected == null || selected.Count == 0)
                     {
-                        sb.AppendLine($"{value.Key.PadRight(50, ' ')}={value.Value}");
+                        return;
                     }
-                    File.WriteAllText(fileName, sb.ToString());
-                }
 
+                    var sb = new StringBuilder();
+                    foreach (var workItemResult in selected)
+                    {
+                        var workItem = workItemResult.WorkItem;
+                        var values = workItem.CreateDictionaryFromWorkItem();
+                        foreach (var value in values)
+                        {
+                            sb.AppendLine($"{value.Key.PadRight(50, ' ')}={value.Value}");
+                        }
+                        File.WriteAllText(fileName, sb.ToString());
+                    }
+
+                }
+                System.Diagnostics.Process.Start(fileName);
             }
-            System.Diagnostics.Process.Start(fileName);
         }
 
         private void InnerExecuteExport()
         {
             var baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            if (SelectedTemplate.IsScriptTemplate)
+            foreach (var selectedTemplate in Templates.Where(t => t.IsSelected))
             {
-                if (ArrayParameters.Any())
+                if (selectedTemplate.IsScriptTemplate)
                 {
-                    var arrayParameters = ArrayParameters.Select(p => new
+                    if (ArrayParameters.Any())
                     {
-                        Name = p.Name,
-                        Values = p.Value?.Split(',', ';').ToList() ?? new List<string>()
-                    })
-                    .ToList();
-
-                    Int32 maxParameterCount = arrayParameters.Max(p => p.Values.Count);
-                    for (int i = 0; i < maxParameterCount; i++)
-                    {
-                        StringBuilder fileSuffix = new StringBuilder();
-                        Dictionary<string, object> parameters = PrepareUserParameters();
-                        foreach (var arrayParameter in arrayParameters)
+                        var arrayParameters = ArrayParameters.Select(p => new
                         {
-                            var value = arrayParameter.Values.Count > i ? arrayParameter.Values[i] : String.Empty;
-                            parameters[arrayParameter.Name] = value;
-                            fileSuffix.Append(arrayParameter.Name);
-                            fileSuffix.Append("_");
-                            fileSuffix.Append(value);
+                            Name = p.Name,
+                            Values = p.Value?.Split(',', ';').ToList() ?? new List<string>()
+                        })
+                        .ToList();
+
+                        Int32 maxParameterCount = arrayParameters.Max(p => p.Values.Count);
+                        for (int i = 0; i < maxParameterCount; i++)
+                        {
+                            StringBuilder fileSuffix = new StringBuilder();
+                            Dictionary<string, object> parameters = PrepareUserParameters();
+                            foreach (var arrayParameter in arrayParameters)
+                            {
+                                var value = arrayParameter.Values.Count > i ? arrayParameter.Values[i] : String.Empty;
+                                parameters[arrayParameter.Name] = value;
+                                fileSuffix.Append(arrayParameter.Name);
+                                fileSuffix.Append("_");
+                                fileSuffix.Append(value);
+                            }
+                            var fileName = Path.Combine(baseFolder, selectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + "_" + fileSuffix.ToString() + ".docx";
+                            GenerateFileFromScriptTemplate(fileName, selectedTemplate, parameters);
                         }
-                        var fileName = Path.Combine(baseFolder, SelectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + "_" + fileSuffix.ToString() + ".docx";
-                        GenerateFileFromScriptTemplate(fileName, parameters);
+                    }
+                    else
+                    {
+                        var fileName = Path.Combine(baseFolder, selectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
+                        Dictionary<string, object> parameters = PrepareUserParameters();
+                        GenerateFileFromScriptTemplate(fileName, selectedTemplate, parameters);
                     }
                 }
                 else
                 {
-                    var fileName = Path.Combine(baseFolder, SelectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
-                    Dictionary<string, object> parameters = PrepareUserParameters();
-                    GenerateFileFromScriptTemplate(fileName, parameters);
-                }
-            }
-            else
-            {
-                var fileName = Path.Combine(baseFolder, SelectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
-                var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
-                if (selected == null || selected.Count == 0)
-                {
-                    return;
-                }
-
-                var template = SelectedTemplate.WordTemplateFolderManager;
-                using (WordManipulator manipulator = new WordManipulator(fileName, true))
-                {
-                    foreach (var workItemResult in selected)
+                    var fileName = Path.Combine(baseFolder, selectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
+                    var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
+                    if (selected == null || selected.Count == 0)
                     {
-                        var workItem = workItemResult.WorkItem;
-                        manipulator.InsertWorkItem(workItem, template.GetTemplateFor(workItem.Type.Name), true);
+                        return;
                     }
+
+                    var template = selectedTemplate.WordTemplateFolderManager;
+                    using (WordManipulator manipulator = new WordManipulator(fileName, true))
+                    {
+                        foreach (var workItemResult in selected)
+                        {
+                            var workItem = workItemResult.WorkItem;
+                            manipulator.InsertWorkItem(workItem, template.GetTemplateFor(workItem.Type.Name), true);
+                        }
+                    }
+                    ManageGeneratedWordFile(fileName);
                 }
-                ManageGeneratedWordFile(fileName);
             }
         }
 
-        private void GenerateFileFromScriptTemplate(string fileName, Dictionary<string, object> parameters)
+        private void GenerateFileFromScriptTemplate(string fileName, TemplateInfo selectedTemplate, Dictionary<string, object> parameters)
         {
-            var executor = new TemplateExecutor(SelectedTemplate.WordTemplateFolderManager);
+            var executor = new TemplateExecutor(selectedTemplate.WordTemplateFolderManager);
             executor.GenerateWordFile(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
             ManageGeneratedWordFile(fileName);
         }
@@ -712,29 +741,40 @@ namespace WordExporter.UI.ViewModel
             Parameters.Clear();
             ArrayParameters.Clear();
             ShowIterationParameters = false;
+            SelectedTemplate = Templates.FirstOrDefault(t => t.IsSelected);
+
             if (SelectedTemplate == null)
             {
                 return;
             }
 
-            if (SelectedTemplate.IsScriptTemplate)
+            foreach (var selectedTemplate in Templates.Where(t => t.IsSelected))
             {
-                foreach (var parameter in SelectedTemplate.Parameters)
+                if (selectedTemplate.IsScriptTemplate)
                 {
-                    if (parameter.AllowedValues?.Length > 0)
+                    foreach (var parameter in selectedTemplate.Parameters)
                     {
-                        parameter.Value = parameter.AllowedValues[0];
+                        if (parameter.AllowedValues?.Length > 0)
+                        {
+                            parameter.Value = parameter.AllowedValues[0];
+                        }
+                        if (!Parameters.Any(p => p.Name == parameter.Name))
+                        {
+                            Parameters.Add(parameter);
+                        }
+                        if (parameter.Type.Equals("iterations", StringComparison.OrdinalIgnoreCase))
+                        {
+                            ShowIterationParameters = true;
+                        }
                     }
-                    Parameters.Add(parameter);
-                    if (parameter.Type.Equals("iterations", StringComparison.OrdinalIgnoreCase))
-                    {
-                        ShowIterationParameters = true;
-                    }
-                }
 
-                foreach (var parameter in SelectedTemplate.ArrayParameters)
-                {
-                    ArrayParameters.Add(new ParameterViewModel(parameter.Key, "", parameter.Value, null));
+                    foreach (var parameter in selectedTemplate.ArrayParameters)
+                    {
+                        if (!ArrayParameters.Any(p => p.Name == parameter.Key))
+                        {
+                            ArrayParameters.Add(new ParameterViewModel(parameter.Key, "", parameter.Value, null));
+                        }
+                    }
                 }
             }
         }
