@@ -308,7 +308,8 @@ namespace WordExporter.Core.WordManipulation
 
                             if (contextRun is AltChunk)
                             {
-                                paragraph.Parent.ReplaceChild(contextRun, paragraph);
+                                var parent = paragraph.Parent;
+                                parent.ReplaceChild(contextRun, paragraph);
                                 //_body.RemoveChild(paragraph);
                                 break; //no more replace in this paragraph, html will replace everything
                             }
@@ -691,7 +692,7 @@ namespace WordExporter.Core.WordManipulation
                         var row = (TableRow)templateRow.CloneNode(true);
 
                         //Grab all the run style of first row to copy on all subsequence cell.
-                        var paragraph = row.Descendants<Paragraph>();
+                        var paragraph = row.Descendants<Paragraph>().ToList();
                         var realReplaceList = dataRow.ToDictionary(_ => CreateSubstitutionTokenFromName(_.Key), _ => _.Value);
 
                         SubstituteInParagraph(realReplaceList, paragraph);
@@ -776,9 +777,6 @@ namespace WordExporter.Core.WordManipulation
             Boolean skipHeader,
             IEnumerable<WorkItem> workItems)
         {
-            if (!workItems.Any())
-                return this;
-
             List<Dictionary<String, Object>> workItemCellsData = new List<Dictionary<String, Object>>();
             List<Int32> parentList = workItems
                 .Select(w => GetParentLink(w))

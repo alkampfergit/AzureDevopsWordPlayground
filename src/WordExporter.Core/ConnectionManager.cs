@@ -1,6 +1,7 @@
 ﻿using Microsoft.TeamFoundation.Client;
 using Microsoft.TeamFoundation.Server;
 using Microsoft.TeamFoundation.WorkItemTracking.Client;
+using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -38,6 +39,8 @@ namespace WordExporter.Core
             _workItemStore = _tfsCollection.GetService<WorkItemStore>();
             _commonStructureService = _tfsCollection.GetService<ICommonStructureService>();
             _commonStructureService4 = _tfsCollection.GetService<ICommonStructureService4>();
+
+            _workItemTrackingHttpClient = _vssConnection.GetClient<WorkItemTrackingHttpClient>();
         }
 
         /// <summary>
@@ -70,6 +73,7 @@ namespace WordExporter.Core
         }
 
         public async Task ConnectAsyncWithNetworkCredentials(
+        
             string accountUri, 
             NetworkCredential credential)
         {
@@ -90,10 +94,13 @@ namespace WordExporter.Core
         private WorkItemStore _workItemStore;
         private ICommonStructureService _commonStructureService;
         private ICommonStructureService4 _commonStructureService4;
+        private WorkItemTrackingHttpClient _workItemTrackingHttpClient;
 
         public WorkItemStore WorkItemStore => _workItemStore;
         public ICommonStructureService CommonStructureService => _commonStructureService;
         public ICommonStructureService4 CommonStructureService4 => _commonStructureService4;
+
+        public WorkItemTrackingHttpClient WorkItemTrackingHttpClient => _workItemTrackingHttpClient;
 
         private bool ConnectToTfs(String accountUri, String accessToken)
         {

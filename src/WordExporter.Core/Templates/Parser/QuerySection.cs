@@ -118,25 +118,28 @@ namespace WordExporter.Core.Templates.Parser
                     .ToList();
 
                 //Add the table only if whe really have work item selected.
-                if (String.IsNullOrEmpty(TableTemplate) && workItems.Count > 0)
+                if (String.IsNullOrEmpty(TableTemplate))
                 {
-                    foreach (var workItem in workItems)
+                    if (workItems.Count > 0)
                     {
-                        if (!SpecificTemplates.TryGetValue(workItem.Type.Name, out var templateName))
+                        foreach (var workItem in workItems)
                         {
-                            templateName = wordTemplateFolderManager.GetTemplateFor(workItem.Type.Name);
-                        }
-                        else
-                        {
-                            templateName = wordTemplateFolderManager.GenerateFullFileName(templateName);
-                        }
+                            if (!SpecificTemplates.TryGetValue(workItem.Type.Name, out var templateName))
+                            {
+                                templateName = wordTemplateFolderManager.GetTemplateFor(workItem.Type.Name);
+                            }
+                            else
+                            {
+                                templateName = wordTemplateFolderManager.GenerateFullFileName(templateName);
+                            }
 
-                        manipulator.InsertWorkItem(workItem, templateName, true, parameters);
+                            manipulator.InsertWorkItem(workItem, templateName, true, parameters);
+                        }
                     }
                 }
                 else
                 {
-                    //We have a table template, we want to export work item as a list 
+                    //We have a table template, we want to export work item as a list
                     var tableFile = wordTemplateFolderManager.GenerateFullFileName(TableTemplate);
                     var tempFile = wordTemplateFolderManager.CopyFileInTempDirectory(tableFile);
                     using (var tableManipulator = new WordManipulator(tempFile, false))

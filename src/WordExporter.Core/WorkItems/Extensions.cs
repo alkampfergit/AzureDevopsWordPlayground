@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Text.RegularExpressions;
 using WordExporter.Core.Support;
 using WordExporter.Core.WordManipulation.Support;
@@ -46,6 +47,28 @@ namespace WordExporter.Core.WorkItems
                 retValue[field.Name] = retValue[field.ReferenceName] = GetValue(field);
             }
 
+            var comments = ConnectionManager.Instance
+                .WorkItemTrackingHttpClient
+                .GetCommentsAsync(workItem.Id).Result;
+
+            if (comments.Count > 0)
+            {
+                StringBuilder htmlComment = new StringBuilder();
+                foreach (var comment in comments.Comments)
+                {
+                    htmlComment.Append($"<b>Author:</b>{comment.RevisedBy.Name} in date {comment.RevisedDate.ToString("yyyy/MM/dd hh:mm")}");
+                    htmlComment.Append("<br>");
+                    htmlComment.Append(comment.Text);
+                }
+
+                var commentsInHtml = workItem.GenerateHtmlForWordEmbedding(htmlComment.ToString(), Registry.Options.NormalizeFontInDescription);
+                retValue["comments"] = new HtmlSubstitution(commentsInHtml);
+            }
+            else
+            {
+                retValue["comments"] = "";
+            }
+
             //ok some of the historical value could be of interests, as an example the last user timestamp for each state change
             //is an information that can be interesting
             if (workItem.Revisions.Count > 0)
@@ -68,8 +91,8 @@ namespace WordExporter.Core.WorkItems
                         }
                         else if (field.ReferenceName.Equals("system.areapath", StringComparison.OrdinalIgnoreCase))
                         {
-                            retValue[$"lastareapathchange.author"] = changedBy;
-                            retValue[$"lastareapathchange.date"] = ((DateTime)changedDate).ToShortDateString();
+                            retValue["lastareapathchange.author"] = changedBy;
+                            retValue["lastareapathchange.date"] = ((DateTime)changedDate).ToShortDateString();
                         }
                     }
                 }
