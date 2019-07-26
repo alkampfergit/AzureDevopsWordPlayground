@@ -5,6 +5,7 @@ using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.VisualStudio.Services.Client;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,11 +37,25 @@ namespace WordExporter.Core
 
         private void InitBaseServices()
         {
-            _workItemStore = _tfsCollection.GetService<WorkItemStore>();
-            _commonStructureService = _tfsCollection.GetService<ICommonStructureService>();
-            _commonStructureService4 = _tfsCollection.GetService<ICommonStructureService4>();
+            try
+            {
+                _workItemStore = _tfsCollection.GetService<WorkItemStore>();
+                _commonStructureService = _tfsCollection.GetService<ICommonStructureService>();
+                _commonStructureService4 = _tfsCollection.GetService<ICommonStructureService4>();
 
-            _workItemTrackingHttpClient = _vssConnection.GetClient<WorkItemTrackingHttpClient>();
+                _workItemTrackingHttpClient = _vssConnection.GetClient<WorkItemTrackingHttpClient>();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error trying to connect to the service {0}", ex.Message);
+                Exception innerEx = ex.InnerException;
+                while (innerEx != null)
+                {
+                    Log.Error(innerEx, "inner exception connecting to the service {0}", innerEx);
+                    innerEx = innerEx.InnerException;
+                }
+                throw;
+            }
         }
 
         /// <summary>
