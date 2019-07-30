@@ -192,14 +192,34 @@ namespace WordExporter.Core.WorkItems
                                 extension = attachment.Extension.Trim('.');
                             }
                         }
-                        else if ((match = Regex.Match(src, @"FileName=(?<id>[^&;]*)", RegexOptions.IgnoreCase)).Success)
+                        else if ((match = Regex.Match(src, @"_apis/wit/attachments/(?<fileId>.*)\?fileName=(?<fileName>.*)", RegexOptions.IgnoreCase)).Success)
                         {
-                            using (var client = new WebClient())
+                            var serverCredentials = ConnectionManager.Instance.GetCredentials();
+                            string fileName = match.Groups["fileName"].Value;
+                            extension = Path.GetExtension(fileName).Trim('.');
+                            downloadedAttachment = Path.GetTempFileName() + "." + extension;
+                            if (serverCredentials != null)
                             {
-                                client.Credentials = ConnectionManager.Instance.GetCredentials();
-                                extension = Path.GetExtension(match.Groups["id"].Value).Trim('.');
-                                downloadedAttachment = Path.GetTempFileName() + "." + extension;
-                                client.DownloadFile(src, downloadedAttachment);
+                                using (var client = new WebClient())
+                                {
+                                    client.Credentials = serverCredentials;
+                                    client.DownloadFile(src, downloadedAttachment);
+                                }
+                            }
+                            else
+                            {
+                                //download with standard client
+                                var fileId = match.Groups["fileId"].Value;
+                                using (var fs = new FileStream(downloadedAttachment, FileMode.Create))
+                                {
+                                    var downloadStream = ConnectionManager.Instance
+                                        .WorkItemTrackingHttpClient
+                                        .GetAttachmentContentAsync(new Guid(fileId), fileName, download: true).Result;
+                                    using (downloadStream)
+                                    {
+                                        downloadStream.CopyTo(fs);
+                                    }
+                                }
                             }
                         }
                         else

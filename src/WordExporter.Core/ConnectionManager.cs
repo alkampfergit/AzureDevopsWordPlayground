@@ -88,8 +88,7 @@ namespace WordExporter.Core
         }
 
         public async Task ConnectAsyncWithNetworkCredentials(
-        
-            string accountUri, 
+            string accountUri,
             NetworkCredential credential)
         {
             Uri uri = new Uri(accountUri);

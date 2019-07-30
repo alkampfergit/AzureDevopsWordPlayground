@@ -185,16 +185,16 @@ namespace WordExporter.Core.WordManipulation
             var realReplaceList = tokenList.ToDictionary(_ => CreateSubstitutionTokenFromName(_.Key), _ => _.Value);
 
             var body = _document.MainDocumentPart.Document.Body;
-            SubstituteInParagraph(realReplaceList, body.Descendants<Paragraph>());
+            SubstituteInParagraph(realReplaceList, body.Descendants<Paragraph>().ToList());
 
             foreach (var header in _document.MainDocumentPart.HeaderParts)
             {
-                SubstituteInParagraph(realReplaceList, header.RootElement.Descendants<Paragraph>());
+                SubstituteInParagraph(realReplaceList, header.RootElement.Descendants<Paragraph>().ToList());
             }
 
             foreach (var footer in _document.MainDocumentPart.FooterParts)
             {
-                SubstituteInParagraph(realReplaceList, footer.RootElement.Descendants<Paragraph>());
+                SubstituteInParagraph(realReplaceList, footer.RootElement.Descendants<Paragraph>().ToList());
             }
 
             return this;
