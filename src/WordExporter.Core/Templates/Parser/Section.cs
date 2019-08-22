@@ -1,9 +1,8 @@
 ﻿using Sprache;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using WordExporter.Core.ExcelManipulation;
 using WordExporter.Core.WordManipulation;
 
 namespace WordExporter.Core.Templates.Parser
@@ -20,6 +19,8 @@ namespace WordExporter.Core.Templates.Parser
             {
                 case "parameters":
                     return ParameterSection.Parser.Parse(sectionContent);
+                case "definition":
+                    return DefinitionSection.Parser.Parse(sectionContent);
                 case "parameterDefinition":
                     return ParameterDefinitionSection.Parser.Parse(sectionContent);
                 case "arrayParameters":
@@ -52,6 +53,26 @@ namespace WordExporter.Core.Templates.Parser
             string teamProjectName)
         {
             //Do nothing.
+        }
+
+        /// <summary>
+        /// <para>Each section should be able to generate a part of the word file.</para>
+        /// <para>
+        /// Not all sections are used to manipulate word file, for those sections
+        /// this function could be not overriden
+        /// </para>
+        /// </summary>
+        /// <param name="manipulator"></param>
+        /// <param name="parameters"></param>
+        /// <param name="connectionManager"></param>
+        /// <param name="teamProjectName"></param>
+        public virtual void AssembleExcel(
+            ExcelManipulator manipulator,
+            Dictionary<string, Object> parameters,
+            ConnectionManager connectionManager,
+            WordTemplateFolderManager wordTemplateFolderManager,
+            string teamProjectName)
+        {
         }
 
         /// <summary>

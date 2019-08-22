@@ -5,9 +5,9 @@ using System.Linq;
 
 namespace WordExporter.Core.Templates.Parser
 {
-    public sealed class ParameterSection : Section
+    public sealed class DefinitionSection : Section
     {
-        private ParameterSection()
+        private DefinitionSection()
         {
         }
 
@@ -45,9 +45,9 @@ namespace WordExporter.Core.Templates.Parser
             select new KeyValuePair<String, String>(parameterName.Trim(), defaultValue.GetOrElse("").Trim(' ', '\"', '\n', '\t', '\r'))
         ).Named("param");
 
-        public readonly static Parser<ParameterSection> Parser =
+        public readonly static Parser<DefinitionSection> Parser =
              from parameters in Parameter.Many()
-             select new ParameterSection()
+             select new DefinitionSection()
              {
                  Parameters = parameters.ToDictionary(p => p.Key, p => p.Value)
              };

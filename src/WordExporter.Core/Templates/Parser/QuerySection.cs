@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using WordExporter.Core.ExcelManipulation;
 using WordExporter.Core.Support;
 using WordExporter.Core.WordManipulation;
 using WordExporter.Core.WorkItems;
@@ -43,6 +44,12 @@ namespace WordExporter.Core.Templates.Parser
                 var dictionary = set.ToDictionary(k => k.Key, v => v.Value);
                 QueryParameters.Add(dictionary);
             }
+
+            var hierarchyModeString = keyValuePairList.GetStringValue("hierarchyMode");
+            if (!String.IsNullOrEmpty(hierarchyModeString))
+            {
+                HierarchyMode = hierarchyModeString.Split(',', ';').Select(s => s.Trim(' ')).ToArray();
+            }
         }
 
         public String Name { get; private set; }
@@ -79,12 +86,25 @@ namespace WordExporter.Core.Templates.Parser
 
         public bool RepeatForEachIteration { get; private set; }
 
+        /// <summary>
+        /// <para>
+        /// This is a special property, if contains series of types that will trigger a real specific query 
+        /// where:
+        /// </para>
+        /// <para>
+        /// 1) the component will execute the query.
+        /// 2) the component will start from the first type, and for each type it will automatically
+        /// traverse all the parent to fulfill hierarchy.
+        /// </para>
+        /// </summary>
+        public String[] HierarchyMode { get; private set; }
+
         public String GetTemplateForWorkItem(string workItemTypeName)
         {
             return SpecificTemplates.TryGetValue(workItemTypeName);
         }
 
-        #region syntax
+        #region Syntax
 
         public readonly static Parser<QuerySection> Parser =
           from keyValueList in ConfigurationParser.KeyValueList
@@ -145,13 +165,38 @@ namespace WordExporter.Core.Templates.Parser
                     using (var tableManipulator = new WordManipulator(tempFile, false))
                     {
                         tableManipulator.SubstituteTokens(parameters);
-                        tableManipulator.FillTableWithCompositeWorkItems(true, workItems);
+                        tableManipulator.FillTableWithCompositeWorkItems(true, workItems, workItemManger);
                     }
                     manipulator.AppendOtherWordFile(tempFile);
                 }
             }
 
             base.Assemble(manipulator, parameters, connectionManager, wordTemplateFolderManager, teamProjectName);
+        }
+
+        public override void AssembleExcel(
+            ExcelManipulator manipulator,
+            Dictionary<string, object> parameters,
+            ConnectionManager connectionManager,
+            WordTemplateFolderManager wordTemplateFolderManager,
+            string teamProjectName)
+        {
+            WorkItemManger workItemManger = PrepareWorkItemManager(connectionManager, teamProjectName);
+            //If we do not have query parameters we have a single query or we can have parametrized query with iterationPath
+            var queries = PrepareQueries(parameters);
+
+            foreach (var query in queries)
+            {
+                if (HierarchyMode?.Length > 0)
+                {
+                    var hr = workItemManger.ExecuteHierarchicQuery(query, HierarchyMode);
+                    manipulator.FillWorkItems(hr);
+                }
+                else
+                {
+                    throw new NotSupportedException("This version of the program only support hierarchy mode for excel");
+                }
+            }
         }
 
         public override void Dump(

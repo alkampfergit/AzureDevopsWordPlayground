@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using WordExporter.Core;
+using WordExporter.Core.ExcelManipulation;
 using WordExporter.Core.Support;
 using WordExporter.Core.Templates;
 using WordExporter.Core.WordManipulation;
@@ -36,10 +37,10 @@ namespace WordExporter
             }
 
             ConnectionManager connection = new ConnectionManager(options.ServiceAddress, options.GetAccessToken());
-
-            DumpAllIterations(connection);
+            
+            //DumpAllIterations(connection);
             //DumpAllTeamProjects(connection);
-
+            //TestExcelExtraction(connection);
             if (String.IsNullOrEmpty(options.TemplateFolder))
             {
                 PerformStandardIterationExport(connection);
@@ -54,6 +55,43 @@ namespace WordExporter
                 Console.WriteLine("Execution completed, press a key to continue");
                 Console.ReadKey();
             }
+        }
+
+        private static void TestExcelExtraction(ConnectionManager connection)
+        {
+            WorkItemManger workItemManger = new WorkItemManger(connection);
+            workItemManger.SetTeamProject("CMMI Playground");
+            var hr = workItemManger.ExecuteHierarchicQuery(@"SELECT
+    *
+FROM workitemLinks
+WHERE
+    (
+        [Source].[System.TeamProject] = '{teamProjectName}'
+        AND[Source].[System.WorkItemType] = 'Feature'
+        AND[Source].[Microsoft.VSTS.Scheduling.TargetDate] < '2062-01-01T00:00:00.0000000'
+        AND[Source].[Microsoft.VSTS.Scheduling.TargetDate] > '1990-02-02T00:00:00.0000000'
+    )
+    AND(
+        [System.Links.LinkType] = 'System.LinkTypes.Hierarchy-Forward'
+    )
+    AND(
+        [Target].[System.TeamProject] = '{teamProjectName}'
+        AND[Target].[System.WorkItemType] <> ''
+    )
+MODE(Recursive)
+",
+new[] { "task", "requirement", "feature", "epic" });
+
+            var tempFile = @"c:\temp\test2.xlsx";
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+
+            File.Copy(@"c:\temp\test.xlsx", tempFile);
+            using (ExcelManipulator m = new ExcelManipulator(tempFile))
+            {
+                m.FillWorkItems(hr);
+            }
+            System.Diagnostics.Process.Start(tempFile);
         }
 
         private static void DumpAllIterations(ConnectionManager connection)
@@ -79,9 +117,9 @@ namespace WordExporter
                 parameters[parameterName] = Console.ReadLine();
             }
 
-            var tempFileName = Path.GetTempPath() + Guid.NewGuid().ToString() + ".docx";
-            executor.GenerateWordFile(tempFileName, connection, options.TeamProject, parameters);
-            System.Diagnostics.Process.Start(tempFileName);
+            var tempFileName = Path.GetTempPath() + Guid.NewGuid().ToString();
+            var generatedName = executor.GenerateFile(tempFileName, connection, options.TeamProject, parameters);
+            System.Diagnostics.Process.Start(generatedName);
         }
 
         private static void PerformStandardIterationExport(ConnectionManager connection)

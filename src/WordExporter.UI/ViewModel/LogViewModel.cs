@@ -6,6 +6,7 @@ using Serilog.Events;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Windows;
 using WordExporter.UI.Support;
 
 namespace WordExporter.UI.ViewModel
@@ -45,7 +46,7 @@ namespace WordExporter.UI.ViewModel
     {
         public LogViewModelCollector()
         {
-            Messenger.Default.Register<LogEvent>(this, Append);
+            Messenger.Default.Register<LogEvent>(this, evt => Application.Current.Dispatcher.Invoke(() => Append(evt)));
             AiKey = StatePersister.Instance.Load<String>("aiKey");
         }
 
@@ -95,11 +96,15 @@ namespace WordExporter.UI.ViewModel
             {
                 renderedMessage += "\n" + logEvent.Exception.ToString();
             }
-            Logs.Add(new LogViewModel()
+
+            if (logEvent.Level >= LogEventLevel.Warning)
             {
-                Level = logEvent.Level.ToString(),
-                Message = renderedMessage,
-            });
+                Logs.Add(new LogViewModel()
+                {
+                    Level = logEvent.Level.ToString(),
+                    Message = renderedMessage,
+                });
+            }
 
             if (_telemetryClient != null)
             {
@@ -112,7 +117,10 @@ namespace WordExporter.UI.ViewModel
                         });
                 }
 
-                _telemetryClient.TrackTrace(renderedMessage);
+                _telemetryClient.TrackTrace(renderedMessage, new Dictionary<String, String>()
+                {
+                    ["logLevel"] = logEvent.Level.ToString()
+                });
             }
         }
     }

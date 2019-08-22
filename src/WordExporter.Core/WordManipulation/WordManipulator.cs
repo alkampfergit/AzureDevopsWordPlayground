@@ -10,6 +10,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
+using WordExporter.Core.Support;
 using WordExporter.Core.WordManipulation.Support;
 using WordExporter.Core.WorkItems;
 using A = DocumentFormat.OpenXml.Drawing;
@@ -775,29 +776,32 @@ namespace WordExporter.Core.WordManipulation
         /// <returns></returns>
         public WordManipulator FillTableWithCompositeWorkItems(
             Boolean skipHeader,
-            IEnumerable<WorkItem> workItems)
+            IEnumerable<WorkItem> workItems,
+            WorkItemManger workItemManger)
         {
             List<Dictionary<String, Object>> workItemCellsData = new List<Dictionary<String, Object>>();
             List<Int32> parentList = workItems
-                .Select(w => GetParentLink(w))
+                .Select(wi => wi.GetParentLink())
                 .Where(l => l != null)
                 .Select(l => l.RelatedWorkItemId)
                 .ToList();
 
-            Dictionary<int, WorkItem> parentWorkItems = GetParentsInformation(parentList);
+            Dictionary<int, WorkItem> parentWorkItems = workItemManger.LoadListOfWorkItems(parentList)
+                .ToDictionary(w => w.Id);
 
             List<Int32> granParentList = parentWorkItems.Values
-               .Select(w => GetParentLink(w))
+               .Select(wi => wi.GetParentLink())
                .Where(l => l != null)
                .Select(l => l.RelatedWorkItemId)
                .ToList();
 
-            Dictionary<int, WorkItem> granParentWorkItems = GetParentsInformation(granParentList);
+            Dictionary<int, WorkItem> granParentWorkItems = workItemManger.LoadListOfWorkItems(granParentList)
+                .ToDictionary(w => w.Id);
 
             foreach (var workItem in workItems)
             {
                 var parameters = workItem.CreateDictionaryFromWorkItem();
-                RelatedLink parentLink = GetParentLink(workItem);
+                RelatedLink parentLink = workItem.GetParentLink();
                 parameters["parent.title"] = String.Empty;
                 parameters["parent.id"] = String.Empty;
                 parameters["parent.parent.title"] = String.Empty;
@@ -806,7 +810,7 @@ namespace WordExporter.Core.WordManipulation
                 {
                     parameters["parent.title"] = parent.Title;
                     parameters["parent.id"] = parent.Id;
-                    var granParentLink = GetParentLink(parent);
+                    var granParentLink = parent.GetParentLink();
                     if (granParentWorkItems.TryGetValue(granParentLink?.RelatedWorkItemId ?? 0, out var granParent))
                     {
                         parameters["parent.parent.title"] = granParent.Title;
@@ -816,37 +820,6 @@ namespace WordExporter.Core.WordManipulation
                 workItemCellsData.Add(parameters);
             }
             return FillCompositeTable(skipHeader, workItemCellsData);
-        }
-
-        private static Dictionary<int, WorkItem> GetParentsInformation(List<int> parentList)
-        {
-            //optimize, load all parents in a dictionary with a single query
-            Dictionary<Int32, WorkItem> parentWorkItems = new Dictionary<int, WorkItem>();
-            if (parentList.Count > 0)
-            {
-                //ok now we need to grab all parent link, just to grab 
-                var query = $@"SELECT
-    [System.Id],
-    [System.Title]
-FROM workitems
-WHERE [System.Id] IN ({String.Join(",", parentList)})
-ORDER BY [System.Id]
-";
-                //ok, query all the parents
-                parentWorkItems = ConnectionManager.Instance.WorkItemStore.Query(query)
-                    .OfType<WorkItem>()
-                    .ToDictionary(w => w.Id);
-            }
-
-            return parentWorkItems;
-        }
-
-        private static RelatedLink GetParentLink(WorkItem workItem)
-        {
-            return workItem
-                .Links
-                .OfType<RelatedLink>()
-                .SingleOrDefault(l => l.LinkTypeEnd.Name == "Parent");
         }
 
         #endregion
@@ -995,8 +968,7 @@ ORDER BY [System.Id]
         // Add a StylesDefinitionsPart to the document.  Returns a reference to it.
         public static StyleDefinitionsPart AddStylesPartToPackage(WordprocessingDocument doc)
         {
-            StyleDefinitionsPart part;
-            part = doc.MainDocumentPart.AddNewPart<StyleDefinitionsPart>();
+            StyleDefinitionsPart part = doc.MainDocumentPart.AddNewPart<StyleDefinitionsPart>();
             Styles root = new Styles();
             root.Save(part);
             return part;

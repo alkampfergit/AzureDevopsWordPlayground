@@ -116,7 +116,7 @@ namespace WordExporter.Core
 
         public WorkItemTrackingHttpClient WorkItemTrackingHttpClient => _workItemTrackingHttpClient;
 
-        private bool ConnectToTfs(String accountUri, String accessToken)
+        private Boolean ConnectToTfs(String accountUri, String accessToken)
         {
             //login for VSTS
             VssCredentials creds = new VssBasicCredential(
@@ -127,6 +127,9 @@ namespace WordExporter.Core
             // Connect to VSTS
             _tfsCollection = new TfsTeamProjectCollection(new Uri(accountUri), creds);
             _tfsCollection.Authenticate();
+
+            _vssConnection = new VssConnection(new Uri(accountUri), creds);
+            _vssConnection.ConnectAsync().Wait();
             return true;
         }
 

@@ -1,8 +1,6 @@
 using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.Command;
 using Microsoft.TeamFoundation.Core.WebApi;
-using Microsoft.TeamFoundation.Core.WebApi.Types;
-using Microsoft.TeamFoundation.Work.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -525,7 +523,6 @@ namespace WordExporter.UI.ViewModel
             try
             {
                 InnerExecuteExport();
-                Status = $"Export Completed";
             }
             catch (Exception ex)
             {
@@ -595,7 +592,6 @@ namespace WordExporter.UI.ViewModel
                         }
                         File.WriteAllText(fileName, sb.ToString());
                     }
-
                 }
                 System.Diagnostics.Process.Start(fileName);
             }
@@ -630,13 +626,13 @@ namespace WordExporter.UI.ViewModel
                                 fileSuffix.Append("_");
                                 fileSuffix.Append(value);
                             }
-                            var fileName = Path.Combine(baseFolder, selectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + "_" + fileSuffix.ToString() + ".docx";
+                            var fileName = Path.Combine(baseFolder, selectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + "_" + fileSuffix.ToString();
                             GenerateFileFromScriptTemplate(fileName, selectedTemplate, parameters);
                         }
                     }
                     else
                     {
-                        var fileName = Path.Combine(baseFolder, selectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
+                        var fileName = Path.Combine(baseFolder, selectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm"));
                         Dictionary<string, object> parameters = PrepareUserParameters();
                         GenerateFileFromScriptTemplate(fileName, selectedTemplate, parameters);
                     }
@@ -662,26 +658,31 @@ namespace WordExporter.UI.ViewModel
                     ManageGeneratedWordFile(fileName);
                 }
             }
+            Status = $"Export Completed";
         }
 
-        private void GenerateFileFromScriptTemplate(string fileName, TemplateInfo selectedTemplate, Dictionary<string, object> parameters)
+        private String GenerateFileFromScriptTemplate(string fileName, TemplateInfo selectedTemplate, Dictionary<string, object> parameters)
         {
             var executor = new TemplateExecutor(selectedTemplate.WordTemplateFolderManager);
-            executor.GenerateWordFile(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
-            ManageGeneratedWordFile(fileName);
+            var finalFileName = executor.GenerateFile(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
+            ManageGeneratedWordFile(finalFileName);
+            return finalFileName;
         }
 
         private void ManageGeneratedWordFile(string fileName)
         {
-            using (WordAutomationHelper helper = new WordAutomationHelper(fileName, false))
+            if (fileName.EndsWith(".docx"))
             {
-                helper.UpdateAllTocs();
-                if (GeneratePdf)
+                using (WordAutomationHelper helper = new WordAutomationHelper(fileName, false))
                 {
-                    var pdfFile = helper.ConvertToPdf();
-                    if (!String.IsNullOrEmpty(pdfFile))
+                    helper.UpdateAllTocs();
+                    if (GeneratePdf)
                     {
-                        System.Diagnostics.Process.Start(pdfFile);
+                        var pdfFile = helper.ConvertToPdf();
+                        if (!String.IsNullOrEmpty(pdfFile))
+                        {
+                            System.Diagnostics.Process.Start(pdfFile);
+                        }
                     }
                 }
             }
