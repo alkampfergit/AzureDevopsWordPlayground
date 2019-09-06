@@ -108,7 +108,7 @@ namespace WordExporter.Core.Templates.Parser
             foreach (var query in queries)
             {
 #if DEBUG
-                Limit = 20;
+                //Limit = 20;
 #endif
                 List<WorkItem> queryRawReturnValue = workItemManger.ExecuteQuery(query)
                     .Take(Limit)
