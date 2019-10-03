@@ -1,9 +1,6 @@
 ﻿using HtmlAgilityPack;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace WordExporter.Core.Support
 {
@@ -48,6 +45,20 @@ namespace WordExporter.Core.Support
                     }
                 }
             }
+        }
+
+        public static string RemoveTable(String htmlText)
+        {
+            HtmlDocument doc = new HtmlDocument();
+            doc.LoadHtml(htmlText);
+
+            //This section removes some of the tag that should not be contained in 
+            doc.RemoveTags(null, "table");
+            doc.RemoveTags(null, "tr");
+            doc.RemoveTags(null, "td");
+            doc.RemoveTags(null, "th");
+
+            return doc.DocumentNode.OuterHtml;
         }
     }
 }

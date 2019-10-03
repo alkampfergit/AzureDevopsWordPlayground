@@ -419,51 +419,18 @@ namespace WordExporter.UI.ViewModel
                 Status = $"Error during connection: {ex.Message}";
                 Log.Error(ex, "Error during connection");
             }
-
-            //// Connect to VSTS
-            //TfsTeamProjectCollection tpc = new TfsTeamProjectCollection(_uri, creds);
-            //tpc.EnsureAuthenticated();
-
-            ////// Create instance of VssConnection using Visual Studio sign-in prompt
-            //VssConnection connection = new VssConnection(new Uri(Address), new VssClientCredentials());
-            //WorkItemTrackingHttpClient witClient = connection.GetClient<WorkItemTrackingHttpClient>();
-            //var items = witClient.GetQueriesAsync("Jarvis", depth: 3).Result;
-
-            //NetworkCredential netCred = new NetworkCredential("", "");
-            //BasicAuthCredential basicCred = new BasicAuthCredential(netCred);
-            //TfsClientCredentials tfsCred = new TfsClientCredentials(basicCred);
-            //tfsCred.AllowInteractive = true;
-
-            //TfsTeamProjectCollection collection = new TfsTeamProjectCollection(new Uri(Address), tfsCred);
-            //collection.Authenticate();
-        }
-
-        private Task GetCollectionAsync(ProjectCollectionHttpClient projectCollectionHttpClient)
-        {
-            return Task.Factory.StartNew(() =>
-            {
-                foreach (var projectCollectionReference in projectCollectionHttpClient.GetProjectCollections(10, 0).Result)
-                {
-                    // retrieve a reference to the actual project collection based on its (reference) .Id
-                    var projectCollection = projectCollectionHttpClient.GetProjectCollection(projectCollectionReference.Id.ToString()).Result;
-
-                    // the 'web' Url is the one for the PC itself, the API endpoint one is different, see below
-                    var webUrlForProjectCollection = projectCollection.Links.Links["web"] as ReferenceLink;
-                }
-            });
         }
 
         private async Task GetTeamProjectAsync(ProjectHttpClient projectHttpClient)
         {
             // then - same as above.. iterate over the project references (with a hard-coded pagination of the first 10 entries only)
-            var tpList = await Task<List<TeamProject>>.Run(() =>
+            var tpList = await Task.Run(() =>
             {
                 List<TeamProject> tempUnorderedListOfTeamProjects = new List<TeamProject>();
                 foreach (var projectReference in projectHttpClient.GetProjects(top: 100, skip: 0).Result)
                 {
                     // and then get ahold of the actual project
                     var teamProject = projectHttpClient.GetProject(projectReference.Id.ToString()).Result;
-                    var urlForTeamProject = ((ReferenceLink)teamProject.Links.Links["web"]).Href;
 
                     tempUnorderedListOfTeamProjects.Add(teamProject);
                 }

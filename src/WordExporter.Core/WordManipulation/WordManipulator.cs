@@ -685,7 +685,6 @@ namespace WordExporter.Core.WordManipulation
 
                 TableRow templateRow = rows.Skip(skip).FirstOrDefault();
                 table.RemoveChild(templateRow);
-
                 if (templateRow != null)
                 {
                     foreach (var dataRow in data)
@@ -694,14 +693,27 @@ namespace WordExporter.Core.WordManipulation
 
                         //Grab all the run style of first row to copy on all subsequence cell.
                         var paragraph = row.Descendants<Paragraph>().ToList();
-                        var realReplaceList = dataRow.ToDictionary(_ => CreateSubstitutionTokenFromName(_.Key), _ => _.Value);
+                        var realReplaceList = dataRow.ToDictionary(dr => CreateSubstitutionTokenFromName(dr.Key), dr => ManipulateRowDataForTables(dr.Value));
 
                         SubstituteInParagraph(realReplaceList, paragraph);
                         table.Append(row);
+
+                        //Sometimes in case of word corruption, it could be nice to dump all intermediate
+                        //version of the doc.
+                        //_document.SaveAs($@"C:\temp\workitem_{count++}_{dataRow["Id"]}.docx");
                     }
                 }
             }
             return this;
+        }
+
+        private static object ManipulateRowDataForTables(object value)
+        {
+            if (value is HtmlSubstitution sub) 
+            {
+                return new HtmlSubstitution(HtmlAgilityToolkitExtension.RemoveTable(sub.HtmlValue));
+            }
+            return value;
         }
 
         /// <summary>

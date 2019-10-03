@@ -22,7 +22,8 @@ namespace WordExporter.Core.WorkItems
         /// </summary>
         /// <param name="workItem"></param>
         /// <returns></returns>
-        public static Dictionary<String, Object> CreateDictionaryFromWorkItem(this WorkItem workItem)
+        public static Dictionary<String, Object> CreateDictionaryFromWorkItem(
+            this WorkItem workItem)
         {
             Log.Logger.Debug("Creating dictionary information for work item {id}", workItem.Id);
             var retValue = new Dictionary<String, Object>(StringComparer.OrdinalIgnoreCase);
