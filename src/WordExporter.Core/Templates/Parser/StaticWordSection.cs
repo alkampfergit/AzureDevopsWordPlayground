@@ -26,7 +26,7 @@ namespace WordExporter.Core.Templates.Parser
 
         #region Syntax
 
-        public static Parser<StaticWordSection> Parser =
+        public readonly static Parser<StaticWordSection> Parser =
             from keyValueList in ConfigurationParser.KeyValueList
             select new StaticWordSection(keyValueList);
 

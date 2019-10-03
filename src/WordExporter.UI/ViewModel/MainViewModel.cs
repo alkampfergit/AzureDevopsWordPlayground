@@ -320,21 +320,6 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
-        //private TemplateInfo _selectedTemplate;
-
-        //public TemplateInfo SelectedTemplate
-        //{
-        //    get
-        //    {
-        //        return _selectedTemplate;
-        //    }
-        //    set
-        //    {
-        //        Set<TemplateInfo>(() => this.SelectedTemplate, ref _selectedTemplate, value);
-        //        UpdateSelectionOfTemplate();
-        //    }
-        //}
-
         private Boolean _generatePdf;
 
         public Boolean GeneratePdf
@@ -388,7 +373,9 @@ namespace WordExporter.UI.ViewModel
 
         public ICommand GetIterations { get; private set; }
 
+#pragma warning disable S3168 // "async" methods should not return "void"
         private async void ConnectMethod()
+#pragma warning restore S3168 // "async" methods should not return "void"
         {
             try
             {
@@ -443,7 +430,9 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+#pragma warning disable S3168 // "async" methods should not return "void"
         public async void GetQueriesMethod()
+#pragma warning restore S3168 // "async" methods should not return "void"
         {
             WorkItemTrackingHttpClient witClient = ConnectionManager.Instance.GetClient<WorkItemTrackingHttpClient>();
             var queries = await witClient.GetQueriesAsync(SelectedTeamProject.Name, depth: 2, expand: QueryExpand.Wiql);
@@ -451,7 +440,7 @@ namespace WordExporter.UI.ViewModel
             await PopulateQueries(String.Empty, witClient, queries);
         }
 
-        public async void GetIterationsMethod()
+        public void GetIterationsMethod()
         {
             Iterations.Clear();
             if (SelectedTeamProject == null)
@@ -628,12 +617,11 @@ namespace WordExporter.UI.ViewModel
             Status = $"Export Completed";
         }
 
-        private String GenerateFileFromScriptTemplate(string fileName, TemplateInfo selectedTemplate, Dictionary<string, object> parameters)
+        private void GenerateFileFromScriptTemplate(string fileName, TemplateInfo selectedTemplate, Dictionary<string, object> parameters)
         {
             var executor = new TemplateExecutor(selectedTemplate.WordTemplateFolderManager);
             var finalFileName = executor.GenerateFile(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
             ManageGeneratedWordFile(finalFileName);
-            return finalFileName;
         }
 
         private void ManageGeneratedWordFile(string fileName)

@@ -147,7 +147,7 @@ namespace WordExporter.Core.Support
 
         private bool IsTokenExpired(IssuedToken token)
         {
-            bool expireToken = true;
+            bool tokenIsExpired = true;
 
             if (token != null && token.Properties.ContainsKey(__tokenExpirationKey))
             {
@@ -157,12 +157,15 @@ namespace WordExporter.Core.Support
                 {
                     DateTime expiration = JsonConvert.DeserializeObject<DateTime>(expirationDateTimeJson);
 
-                    expireToken = DateTime.Compare(DateTime.Now, expiration) >= 0;
+                    tokenIsExpired = DateTime.Compare(DateTime.Now, expiration) >= 0;
                 }
-                catch { }
+                catch (JsonException)
+                {
+                    // token is malfromed, ignore the exception and simply return that it is expired
+                }
             }
 
-            return expireToken;
+            return tokenIsExpired;
         }
     }
 }

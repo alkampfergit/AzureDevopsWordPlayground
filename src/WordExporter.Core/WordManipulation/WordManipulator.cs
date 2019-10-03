@@ -16,6 +16,7 @@ using WordExporter.Core.WorkItems;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
+#pragma warning disable S3220 // Method calls should not resolve ambiguously to overloads with "params"
 
 namespace WordExporter.Core.WordManipulation
 {
@@ -636,6 +637,7 @@ namespace WordExporter.Core.WordManipulation
                                 var run = runs[cellIndex];
 
                                 // Specify the table cell content.
+
                                 Run runToAdd = new Run(new Text(dataCell.ToString()));
                                 CopyPropertiesFromRun(run, runToAdd);
 
@@ -914,7 +916,7 @@ namespace WordExporter.Core.WordManipulation
             Styles styles = styleDefinitionsPart.Styles;
             if (styles == null)
             {
-                styleDefinitionsPart.Styles = new Styles();
+                styles = styleDefinitionsPart.Styles = new Styles();
                 styleDefinitionsPart.Styles.Save();
             }
 
@@ -989,3 +991,5 @@ namespace WordExporter.Core.WordManipulation
         #endregion
     }
 }
+
+#pragma warning restore S3220 // Method calls should not resolve ambiguously to overloads with "params"
