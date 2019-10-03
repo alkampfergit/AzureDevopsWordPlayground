@@ -23,6 +23,15 @@ namespace WordExporter.Core.WordManipulation
             doc = app.Documents.Open(_fileName);
         }
 
+        public void UpdateAllTocs()
+        {
+            foreach (TableOfContents toc in doc.TablesOfContents)
+            {
+                toc.Update();
+            }
+
+        }
+
         public String ConvertToPdf()
         {
             try

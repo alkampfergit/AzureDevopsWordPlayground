@@ -10,11 +10,13 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
+using WordExporter.Core.Support;
 using WordExporter.Core.WordManipulation.Support;
 using WordExporter.Core.WorkItems;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
+#pragma warning disable S3220 // Method calls should not resolve ambiguously to overloads with "params"
 
 namespace WordExporter.Core.WordManipulation
 {
@@ -115,9 +117,9 @@ namespace WordExporter.Core.WordManipulation
         /// <param name="startingParameters">These parameters will be added to dictionary
         /// with all fields of work item.</param>
         public void InsertWorkItem(
-            WorkItem workItem, 
+            WorkItem workItem,
             String workItemTemplateFile,
-            Boolean insertPageBreak = true, 
+            Boolean insertPageBreak = true,
             Dictionary<string, object> startingParameters = null)
         {
             //ok we need to open the template, give it a new name, perform substitution and finally append to the existing document
@@ -185,16 +187,16 @@ namespace WordExporter.Core.WordManipulation
             var realReplaceList = tokenList.ToDictionary(_ => CreateSubstitutionTokenFromName(_.Key), _ => _.Value);
 
             var body = _document.MainDocumentPart.Document.Body;
-            SubstituteInParagraph(realReplaceList, body.Descendants<Paragraph>());
+            SubstituteInParagraph(realReplaceList, body.Descendants<Paragraph>().ToList());
 
             foreach (var header in _document.MainDocumentPart.HeaderParts)
             {
-                SubstituteInParagraph(realReplaceList, header.RootElement.Descendants<Paragraph>());
+                SubstituteInParagraph(realReplaceList, header.RootElement.Descendants<Paragraph>().ToList());
             }
 
             foreach (var footer in _document.MainDocumentPart.FooterParts)
             {
-                SubstituteInParagraph(realReplaceList, footer.RootElement.Descendants<Paragraph>());
+                SubstituteInParagraph(realReplaceList, footer.RootElement.Descendants<Paragraph>().ToList());
             }
 
             return this;
@@ -269,14 +271,17 @@ namespace WordExporter.Core.WordManipulation
                             Run runBefore;
                             var textOfFirstRun = runThatMatches.First().Run.InnerText;
                             var startTokenPosition = textOfFirstRun.IndexOf("{{");
+                            Text runText;
                             if (startTokenPosition > 0)
                             {
-                                runBefore = new Run(new Text(textOfFirstRun.Substring(0, startTokenPosition)));
+                                runText = new Text(textOfFirstRun.Substring(0, startTokenPosition));
                             }
                             else
                             {
-                                runBefore = new Run(new Text(String.Empty));
+                                runText = new Text(String.Empty);
                             }
+
+                            runBefore = new Run(runText);
 
                             //now we will add the real replace
 
@@ -305,7 +310,8 @@ namespace WordExporter.Core.WordManipulation
 
                             if (contextRun is AltChunk)
                             {
-                                paragraph.Parent.ReplaceChild(contextRun, paragraph);
+                                var parent = paragraph.Parent;
+                                parent.ReplaceChild(contextRun, paragraph);
                                 //_body.RemoveChild(paragraph);
                                 break; //no more replace in this paragraph, html will replace everything
                             }
@@ -447,6 +453,12 @@ namespace WordExporter.Core.WordManipulation
                 {
                     var copy = runProperties.CloneNode(true);
                     run.InsertAt(copy, 0);
+                }
+
+                //For the new run, set all text with preserve space.
+                foreach (var text in run.Descendants<Text>())
+                {
+                    text.Space = SpaceProcessingModeValues.Preserve;
                 }
             }
         }
@@ -625,6 +637,7 @@ namespace WordExporter.Core.WordManipulation
                                 var run = runs[cellIndex];
 
                                 // Specify the table cell content.
+
                                 Run runToAdd = new Run(new Text(dataCell.ToString()));
                                 CopyPropertiesFromRun(run, runToAdd);
 
@@ -674,7 +687,6 @@ namespace WordExporter.Core.WordManipulation
 
                 TableRow templateRow = rows.Skip(skip).FirstOrDefault();
                 table.RemoveChild(templateRow);
-
                 if (templateRow != null)
                 {
                     foreach (var dataRow in data)
@@ -682,15 +694,28 @@ namespace WordExporter.Core.WordManipulation
                         var row = (TableRow)templateRow.CloneNode(true);
 
                         //Grab all the run style of first row to copy on all subsequence cell.
-                        var paragraph = row.Descendants<Paragraph>();
-                        var realReplaceList = dataRow.ToDictionary(_ => CreateSubstitutionTokenFromName(_.Key), _ => _.Value);
+                        var paragraph = row.Descendants<Paragraph>().ToList();
+                        var realReplaceList = dataRow.ToDictionary(dr => CreateSubstitutionTokenFromName(dr.Key), dr => ManipulateRowDataForTables(dr.Value));
 
                         SubstituteInParagraph(realReplaceList, paragraph);
                         table.Append(row);
+
+                        //Sometimes in case of word corruption, it could be nice to dump all intermediate
+                        //version of the doc.
+                        //_document.SaveAs($@"C:\temp\workitem_{count++}_{dataRow["Id"]}.docx");
                     }
                 }
             }
             return this;
+        }
+
+        private static object ManipulateRowDataForTables(object value)
+        {
+            if (value is HtmlSubstitution sub) 
+            {
+                return new HtmlSubstitution(HtmlAgilityToolkitExtension.RemoveTable(sub.HtmlValue));
+            }
+            return value;
         }
 
         /// <summary>
@@ -765,32 +790,32 @@ namespace WordExporter.Core.WordManipulation
         /// <returns></returns>
         public WordManipulator FillTableWithCompositeWorkItems(
             Boolean skipHeader,
-            IEnumerable<WorkItem> workItems)
+            IEnumerable<WorkItem> workItems,
+            WorkItemManger workItemManger)
         {
-            if (!workItems.Any())
-                return this;
-
             List<Dictionary<String, Object>> workItemCellsData = new List<Dictionary<String, Object>>();
             List<Int32> parentList = workItems
-                .Select(w => GetParentLink(w))
+                .Select(wi => wi.GetParentLink())
                 .Where(l => l != null)
                 .Select(l => l.RelatedWorkItemId)
                 .ToList();
 
-            Dictionary<int, WorkItem> parentWorkItems = GetParentsInformation(parentList);
+            Dictionary<int, WorkItem> parentWorkItems = workItemManger.LoadListOfWorkItems(parentList)
+                .ToDictionary(w => w.Id);
 
             List<Int32> granParentList = parentWorkItems.Values
-               .Select(w => GetParentLink(w))
+               .Select(wi => wi.GetParentLink())
                .Where(l => l != null)
                .Select(l => l.RelatedWorkItemId)
                .ToList();
 
-            Dictionary<int, WorkItem> granParentWorkItems = GetParentsInformation(granParentList);
+            Dictionary<int, WorkItem> granParentWorkItems = workItemManger.LoadListOfWorkItems(granParentList)
+                .ToDictionary(w => w.Id);
 
             foreach (var workItem in workItems)
             {
                 var parameters = workItem.CreateDictionaryFromWorkItem();
-                RelatedLink parentLink = GetParentLink(workItem);
+                RelatedLink parentLink = workItem.GetParentLink();
                 parameters["parent.title"] = String.Empty;
                 parameters["parent.id"] = String.Empty;
                 parameters["parent.parent.title"] = String.Empty;
@@ -799,7 +824,7 @@ namespace WordExporter.Core.WordManipulation
                 {
                     parameters["parent.title"] = parent.Title;
                     parameters["parent.id"] = parent.Id;
-                    var granParentLink = GetParentLink(parent);
+                    var granParentLink = parent.GetParentLink();
                     if (granParentWorkItems.TryGetValue(granParentLink?.RelatedWorkItemId ?? 0, out var granParent))
                     {
                         parameters["parent.parent.title"] = granParent.Title;
@@ -809,37 +834,6 @@ namespace WordExporter.Core.WordManipulation
                 workItemCellsData.Add(parameters);
             }
             return FillCompositeTable(skipHeader, workItemCellsData);
-        }
-
-        private static Dictionary<int, WorkItem> GetParentsInformation(List<int> parentList)
-        {
-            //optimize, load all parents in a dictionary with a single query
-            Dictionary<Int32, WorkItem> parentWorkItems = new Dictionary<int, WorkItem>();
-            if (parentList.Count > 0)
-            {
-                //ok now we need to grab all parent link, just to grab 
-                var query = $@"SELECT
-    [System.Id],
-    [System.Title]
-FROM workitems
-WHERE [System.Id] IN ({String.Join(",", parentList)})
-ORDER BY [System.Id]
-";
-                //ok, query all the parents
-                parentWorkItems = ConnectionManager.Instance.WorkItemStore.Query(query)
-                    .OfType<WorkItem>()
-                    .ToDictionary(w => w.Id);
-            }
-
-            return parentWorkItems;
-        }
-
-        private static RelatedLink GetParentLink(WorkItem workItem)
-        {
-            return workItem
-                .Links
-                .OfType<RelatedLink>()
-                .SingleOrDefault(l => l.LinkTypeEnd.Name == "Parent");
         }
 
         #endregion
@@ -922,7 +916,7 @@ ORDER BY [System.Id]
             Styles styles = styleDefinitionsPart.Styles;
             if (styles == null)
             {
-                styleDefinitionsPart.Styles = new Styles();
+                styles = styleDefinitionsPart.Styles = new Styles();
                 styleDefinitionsPart.Styles.Save();
             }
 
@@ -988,8 +982,7 @@ ORDER BY [System.Id]
         // Add a StylesDefinitionsPart to the document.  Returns a reference to it.
         public static StyleDefinitionsPart AddStylesPartToPackage(WordprocessingDocument doc)
         {
-            StyleDefinitionsPart part;
-            part = doc.MainDocumentPart.AddNewPart<StyleDefinitionsPart>();
+            StyleDefinitionsPart part = doc.MainDocumentPart.AddNewPart<StyleDefinitionsPart>();
             Styles root = new Styles();
             root.Save(part);
             return part;
@@ -998,3 +991,5 @@ ORDER BY [System.Id]
         #endregion
     }
 }
+
+#pragma warning restore S3220 // Method calls should not resolve ambiguously to overloads with "params"

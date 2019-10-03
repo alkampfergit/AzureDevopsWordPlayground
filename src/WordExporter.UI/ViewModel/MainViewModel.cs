@@ -1,8 +1,6 @@
 using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.Command;
 using Microsoft.TeamFoundation.Core.WebApi;
-using Microsoft.TeamFoundation.Core.WebApi.Types;
-using Microsoft.TeamFoundation.Work.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -195,6 +193,23 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        private TemplateInfo _selectedTemplate;
+
+        /// <summary>
+        /// First template selected.
+        /// </summary>
+        public TemplateInfo SelectedTemplate
+        {
+            get
+            {
+                return _selectedTemplate;
+            }
+            set
+            {
+                Set<TemplateInfo>(() => this.SelectedTemplate, ref _selectedTemplate, value);
+            }
+        }
+
         private String _templateFolder;
 
         public String TemplateFolder
@@ -215,6 +230,7 @@ namespace WordExporter.UI.ViewModel
                         var wordTemplate = TemplateManager.GetWordDefinitionTemplate(template);
                         var info = new TemplateInfo(template, wordTemplate);
                         Templates.Add(info);
+                        info.PropertyChanged += TemplatePropertyChanged;
                     }
                     StatePersister.Instance.Save("main.TemplateFolder", value);
                 }
@@ -223,6 +239,11 @@ namespace WordExporter.UI.ViewModel
                     TemplateManager = null;
                 }
             }
+        }
+
+        private void TemplatePropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            UpdateSelectionOfTemplate();
         }
 
         private TemplateManager _templateManager;
@@ -299,21 +320,6 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
-        private TemplateInfo _selectedTemplate;
-
-        public TemplateInfo SelectedTemplate
-        {
-            get
-            {
-                return _selectedTemplate;
-            }
-            set
-            {
-                Set<TemplateInfo>(() => this.SelectedTemplate, ref _selectedTemplate, value);
-                UpdateSelectionOfTemplate();
-            }
-        }
-
         private Boolean _generatePdf;
 
         public Boolean GeneratePdf
@@ -328,6 +334,35 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+        private Boolean _showIterationParameters;
+
+        public Boolean ShowIterationParameters
+        {
+            get
+            {
+                return _showIterationParameters;
+            }
+            set
+            {
+                Set<Boolean>(() => this.ShowIterationParameters, ref _showIterationParameters, value);
+            }
+        }
+
+        private Boolean _normalizeFont;
+
+        public Boolean NormalizeFont
+        {
+            get
+            {
+                return _normalizeFont;
+            }
+            set
+            {
+                Registry.Options.NormalizeFontInDescription = value;
+                Set<Boolean>(() => this.NormalizeFont, ref _normalizeFont, value);
+            }
+        }
+
         public ICommand Connect { get; private set; }
 
         public ICommand GetQueries { get; private set; }
@@ -338,7 +373,9 @@ namespace WordExporter.UI.ViewModel
 
         public ICommand GetIterations { get; private set; }
 
+#pragma warning disable S3168 // "async" methods should not return "void"
         private async void ConnectMethod()
+#pragma warning restore S3168 // "async" methods should not return "void"
         {
             try
             {
@@ -353,7 +390,7 @@ namespace WordExporter.UI.ViewModel
                     await connectionManager.ConnectAsyncWithNetworkCredentials(
                         Address, new NetworkCredential(CredentialViewModel.UserName, CredentialViewModel.Password));
                     StatePersister.Instance.Save("userName", CredentialViewModel.UserName);
-                    StatePersister.Instance.Save("password", EncryptionUtils.Encrypt( CredentialViewModel.Password));
+                    StatePersister.Instance.Save("password", EncryptionUtils.Encrypt(CredentialViewModel.Password));
                     StatePersister.Instance.Save("useNetworkCredential", UseNetworkCredential.ToString());
                 }
 
@@ -369,51 +406,18 @@ namespace WordExporter.UI.ViewModel
                 Status = $"Error during connection: {ex.Message}";
                 Log.Error(ex, "Error during connection");
             }
-
-            //// Connect to VSTS
-            //TfsTeamProjectCollection tpc = new TfsTeamProjectCollection(_uri, creds);
-            //tpc.EnsureAuthenticated();
-
-            ////// Create instance of VssConnection using Visual Studio sign-in prompt
-            //VssConnection connection = new VssConnection(new Uri(Address), new VssClientCredentials());
-            //WorkItemTrackingHttpClient witClient = connection.GetClient<WorkItemTrackingHttpClient>();
-            //var items = witClient.GetQueriesAsync("Jarvis", depth: 3).Result;
-
-            //NetworkCredential netCred = new NetworkCredential("", "");
-            //BasicAuthCredential basicCred = new BasicAuthCredential(netCred);
-            //TfsClientCredentials tfsCred = new TfsClientCredentials(basicCred);
-            //tfsCred.AllowInteractive = true;
-
-            //TfsTeamProjectCollection collection = new TfsTeamProjectCollection(new Uri(Address), tfsCred);
-            //collection.Authenticate();
-        }
-
-        private Task GetCollectionAsync(ProjectCollectionHttpClient projectCollectionHttpClient)
-        {
-            return Task.Factory.StartNew(() =>
-            {
-                foreach (var projectCollectionReference in projectCollectionHttpClient.GetProjectCollections(10, 0).Result)
-                {
-                    // retrieve a reference to the actual project collection based on its (reference) .Id
-                    var projectCollection = projectCollectionHttpClient.GetProjectCollection(projectCollectionReference.Id.ToString()).Result;
-
-                    // the 'web' Url is the one for the PC itself, the API endpoint one is different, see below
-                    var webUrlForProjectCollection = projectCollection.Links.Links["web"] as ReferenceLink;
-                }
-            });
         }
 
         private async Task GetTeamProjectAsync(ProjectHttpClient projectHttpClient)
         {
             // then - same as above.. iterate over the project references (with a hard-coded pagination of the first 10 entries only)
-            var tpList = await Task<List<TeamProject>>.Run(() =>
+            var tpList = await Task.Run(() =>
             {
                 List<TeamProject> tempUnorderedListOfTeamProjects = new List<TeamProject>();
                 foreach (var projectReference in projectHttpClient.GetProjects(top: 100, skip: 0).Result)
                 {
                     // and then get ahold of the actual project
                     var teamProject = projectHttpClient.GetProject(projectReference.Id.ToString()).Result;
-                    var urlForTeamProject = ((ReferenceLink)teamProject.Links.Links["web"]).Href;
 
                     tempUnorderedListOfTeamProjects.Add(teamProject);
                 }
@@ -426,7 +430,9 @@ namespace WordExporter.UI.ViewModel
             }
         }
 
+#pragma warning disable S3168 // "async" methods should not return "void"
         public async void GetQueriesMethod()
+#pragma warning restore S3168 // "async" methods should not return "void"
         {
             WorkItemTrackingHttpClient witClient = ConnectionManager.Instance.GetClient<WorkItemTrackingHttpClient>();
             var queries = await witClient.GetQueriesAsync(SelectedTeamProject.Name, depth: 2, expand: QueryExpand.Wiql);
@@ -434,7 +440,7 @@ namespace WordExporter.UI.ViewModel
             await PopulateQueries(String.Empty, witClient, queries);
         }
 
-        public async void GetIterationsMethod()
+        public void GetIterationsMethod()
         {
             Iterations.Clear();
             if (SelectedTeamProject == null)
@@ -460,7 +466,7 @@ namespace WordExporter.UI.ViewModel
                 return;
             }
 
-            if (SelectedTemplate == null)
+            if (!Templates.Any(t => t.IsSelected))
             {
                 return;
             }
@@ -473,7 +479,6 @@ namespace WordExporter.UI.ViewModel
             try
             {
                 InnerExecuteExport();
-                Status = $"Export Completed";
             }
             catch (Exception ex)
             {
@@ -489,7 +494,7 @@ namespace WordExporter.UI.ViewModel
                 return;
             }
 
-            if (SelectedTemplate == null)
+            if (!Templates.Any(t => t.IsSelected))
             {
                 return;
             }
@@ -513,123 +518,130 @@ namespace WordExporter.UI.ViewModel
 
         private void InnerExecuteDump()
         {
-            var fileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()) + ".txt";
-            if (SelectedTemplate.IsScriptTemplate)
+            foreach (var selectedTemplate in Templates.Where(t => t.IsSelected))
             {
-                var executor = new TemplateExecutor(SelectedTemplate.WordTemplateFolderManager);
-
-                //now we need to ask user parameter value
-                Dictionary<string, object> parameters = PrepareUserParameters();
-                executor.DumpWorkItem(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
-            }
-            else
-            {
-                var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
-                if (selected == null || selected.Count == 0)
+                var fileName = Path.Combine(Path.GetTempPath(), selectedTemplate.TemplateName, Guid.NewGuid().ToString()) + ".txt";
+                if (selectedTemplate.IsScriptTemplate)
                 {
-                    return;
+                    var executor = new TemplateExecutor(selectedTemplate.WordTemplateFolderManager);
+
+                    //now we need to ask user parameter value
+                    Dictionary<string, object> parameters = PrepareUserParameters();
+                    executor.DumpWorkItem(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
                 }
-
-                var sb = new StringBuilder();
-                foreach (var workItemResult in selected)
+                else
                 {
-                    var workItem = workItemResult.WorkItem;
-                    var values = workItem.CreateDictionaryFromWorkItem();
-                    foreach (var value in values)
+                    var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
+                    if (selected == null || selected.Count == 0)
                     {
-                        sb.AppendLine($"{value.Key.PadRight(50, ' ')}={value.Value}");
+                        return;
                     }
-                    File.WriteAllText(fileName, sb.ToString());
-                }
 
+                    var sb = new StringBuilder();
+                    foreach (var workItemResult in selected)
+                    {
+                        var workItem = workItemResult.WorkItem;
+                        var values = workItem.CreateDictionaryFromWorkItem();
+                        foreach (var value in values)
+                        {
+                            sb.AppendLine($"{value.Key.PadRight(50, ' ')}={value.Value}");
+                        }
+                        File.WriteAllText(fileName, sb.ToString());
+                    }
+                }
+                System.Diagnostics.Process.Start(fileName);
             }
-            System.Diagnostics.Process.Start(fileName);
         }
 
         private void InnerExecuteExport()
         {
             var baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            if (SelectedTemplate.IsScriptTemplate)
+            foreach (var selectedTemplate in Templates.Where(t => t.IsSelected))
             {
-                if (ArrayParameters.Any())
+                if (selectedTemplate.IsScriptTemplate)
                 {
-                    var arrayParameters = ArrayParameters.Select(p => new
+                    if (ArrayParameters.Any())
                     {
-                        Name = p.Name,
-                        Values = p.Value?.Split(',', ';').ToList() ?? new List<string>()
-                    })
-                    .ToList();
-
-                    Int32 maxParameterCount = arrayParameters.Max(p => p.Values.Count);
-                    for (int i = 0; i < maxParameterCount; i++)
-                    {
-                        StringBuilder fileSuffix = new StringBuilder();
-                        Dictionary<string, object> parameters = PrepareUserParameters();
-                        foreach (var arrayParameter in arrayParameters)
+                        var arrayParameters = ArrayParameters.Select(p => new
                         {
-                            var value = arrayParameter.Values.Count > i ? arrayParameter.Values[i] : String.Empty;
-                            parameters[arrayParameter.Name] = value;
-                            fileSuffix.Append(arrayParameter.Name);
-                            fileSuffix.Append("_");
-                            fileSuffix.Append(value);
+                            Name = p.Name,
+                            Values = p.Value?.Split(',', ';').ToList() ?? new List<string>()
+                        })
+                        .ToList();
+
+                        Int32 maxParameterCount = arrayParameters.Max(p => p.Values.Count);
+                        for (int i = 0; i < maxParameterCount; i++)
+                        {
+                            StringBuilder fileSuffix = new StringBuilder();
+                            Dictionary<string, object> parameters = PrepareUserParameters();
+                            foreach (var arrayParameter in arrayParameters)
+                            {
+                                var value = arrayParameter.Values.Count > i ? arrayParameter.Values[i] : String.Empty;
+                                parameters[arrayParameter.Name] = value;
+                                fileSuffix.Append(arrayParameter.Name);
+                                fileSuffix.Append("_");
+                                fileSuffix.Append(value);
+                            }
+                            var fileName = Path.Combine(baseFolder, selectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + "_" + fileSuffix.ToString();
+                            GenerateFileFromScriptTemplate(fileName, selectedTemplate, parameters);
                         }
-                        var fileName = Path.Combine(baseFolder, SelectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + "_" + fileSuffix.ToString() + ".docx";
-                        GenerateFileFromScriptTemplate(fileName, parameters);
+                    }
+                    else
+                    {
+                        var fileName = Path.Combine(baseFolder, selectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm"));
+                        Dictionary<string, object> parameters = PrepareUserParameters();
+                        GenerateFileFromScriptTemplate(fileName, selectedTemplate, parameters);
                     }
                 }
                 else
                 {
-                    var fileName = Path.Combine(baseFolder, SelectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
-                    Dictionary<string, object> parameters = PrepareUserParameters();
-                    GenerateFileFromScriptTemplate(fileName, parameters);
-                }
-            }
-            else
-            {
-                var fileName = Path.Combine(baseFolder, SelectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
-                var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
-                if (selected == null || selected.Count == 0)
-                {
-                    return;
-                }
-
-                var template = SelectedTemplate.WordTemplateFolderManager;
-                using (WordManipulator manipulator = new WordManipulator(fileName, true))
-                {
-                    foreach (var workItemResult in selected)
+                    var fileName = Path.Combine(baseFolder, selectedTemplate.TemplateName + "_" + DateTime.Now.ToString("dd_MM_yyyy hh mm")) + ".docx";
+                    var selected = SelectedQuery?.Results?.Where(q => q.Selected).ToList();
+                    if (selected == null || selected.Count == 0)
                     {
-                        var workItem = workItemResult.WorkItem;
-                        manipulator.InsertWorkItem(workItem, template.GetTemplateFor(workItem.Type.Name), true);
+                        return;
                     }
+
+                    var template = selectedTemplate.WordTemplateFolderManager;
+                    using (WordManipulator manipulator = new WordManipulator(fileName, true))
+                    {
+                        foreach (var workItemResult in selected)
+                        {
+                            var workItem = workItemResult.WorkItem;
+                            manipulator.InsertWorkItem(workItem, template.GetTemplateFor(workItem.Type.Name), true);
+                        }
+                    }
+                    ManageGeneratedWordFile(fileName);
                 }
-                ManageGeneratedWordFile(fileName);
             }
+            Status = $"Export Completed";
         }
 
-        private void GenerateFileFromScriptTemplate(string fileName, Dictionary<string, object> parameters)
+        private void GenerateFileFromScriptTemplate(string fileName, TemplateInfo selectedTemplate, Dictionary<string, object> parameters)
         {
-            var executor = new TemplateExecutor(SelectedTemplate.WordTemplateFolderManager);
-            executor.GenerateWordFile(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
-            ManageGeneratedWordFile(fileName);
+            var executor = new TemplateExecutor(selectedTemplate.WordTemplateFolderManager);
+            var finalFileName = executor.GenerateFile(fileName, ConnectionManager.Instance, SelectedTeamProject.Name, parameters);
+            ManageGeneratedWordFile(finalFileName);
         }
 
         private void ManageGeneratedWordFile(string fileName)
         {
-            if (GeneratePdf)
+            if (fileName.EndsWith(".docx"))
             {
                 using (WordAutomationHelper helper = new WordAutomationHelper(fileName, false))
                 {
-                    var pdfFile = helper.ConvertToPdf();
-                    if (!String.IsNullOrEmpty(pdfFile))
+                    helper.UpdateAllTocs();
+                    if (GeneratePdf)
                     {
-                        System.Diagnostics.Process.Start(pdfFile);
+                        var pdfFile = helper.ConvertToPdf();
+                        if (!String.IsNullOrEmpty(pdfFile))
+                        {
+                            System.Diagnostics.Process.Start(pdfFile);
+                        }
                     }
                 }
             }
-            else
-            {
-                System.Diagnostics.Process.Start(fileName);
-            }
+            System.Diagnostics.Process.Start(fileName);
         }
 
         private Dictionary<string, object> PrepareUserParameters()
@@ -649,6 +661,9 @@ namespace WordExporter.UI.ViewModel
                     parameters[parameter.Name] = parameter.Value;
                 }
             }
+            //now some standard parameter
+            parameters["CurrentDate"] = DateTime.Now.ToString("dd/MM/yyyy");
+            parameters["CurrentUser"] = ConnectionManager.Instance.GetAuthenticatedUser();
             return parameters;
         }
 
@@ -681,21 +696,41 @@ namespace WordExporter.UI.ViewModel
         {
             Parameters.Clear();
             ArrayParameters.Clear();
+            ShowIterationParameters = false;
+            SelectedTemplate = Templates.FirstOrDefault(t => t.IsSelected);
+
             if (SelectedTemplate == null)
             {
                 return;
             }
 
-            if (SelectedTemplate.IsScriptTemplate)
+            foreach (var selectedTemplate in Templates.Where(t => t.IsSelected))
             {
-                foreach (var parameter in SelectedTemplate.Parameters)
+                if (selectedTemplate.IsScriptTemplate)
                 {
-                    Parameters.Add(parameter);
-                }
+                    foreach (var parameter in selectedTemplate.Parameters)
+                    {
+                        if (parameter.AllowedValues?.Length > 0)
+                        {
+                            parameter.Value = parameter.AllowedValues[0];
+                        }
+                        if (!Parameters.Any(p => p.Name == parameter.Name))
+                        {
+                            Parameters.Add(parameter);
+                        }
+                        if (parameter.Type.Equals("iterations", StringComparison.OrdinalIgnoreCase))
+                        {
+                            ShowIterationParameters = true;
+                        }
+                    }
 
-                foreach (var parameter in SelectedTemplate.ArrayParameters)
-                {
-                    ArrayParameters.Add(new ParameterViewModel(parameter.Key, "", parameter.Value, null));
+                    foreach (var parameter in selectedTemplate.ArrayParameters)
+                    {
+                        if (!ArrayParameters.Any(p => p.Name == parameter.Key))
+                        {
+                            ArrayParameters.Add(new ParameterViewModel(parameter.Key, "", parameter.Value, null));
+                        }
+                    }
                 }
             }
         }

@@ -13,5 +13,13 @@ namespace WordExporter.Core.Support
         {
             return workItem.Fields[fieldName]?.Value?.ToString() ?? String.Empty;
         }
+
+        public static RelatedLink GetParentLink(this WorkItem workItem)
+        {
+            return workItem
+                .Links
+                .OfType<RelatedLink>()
+                .SingleOrDefault(l => l.LinkTypeEnd.Name == "Parent");
+        }
     }
 }

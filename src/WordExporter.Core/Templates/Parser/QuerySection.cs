@@ -1,9 +1,11 @@
-﻿using Serilog;
+﻿using Microsoft.TeamFoundation.WorkItemTracking.Client;
+using Serilog;
 using Sprache;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using WordExporter.Core.ExcelManipulation;
 using WordExporter.Core.Support;
 using WordExporter.Core.WordManipulation;
 using WordExporter.Core.WorkItems;
@@ -30,12 +32,23 @@ namespace WordExporter.Core.Templates.Parser
             Limit = keyValuePairList.GetIntValue("limit", Int32.MaxValue);
             QueryParameters = new List<Dictionary<string, string>>();
             RepeatForEachIteration = keyValuePairList.GetBooleanValue("repeatForEachIteration");
+            var workItemTypes = keyValuePairList.GetStringValue("workItemTypes");
+            if (!String.IsNullOrEmpty(workItemTypes))
+            {
+                this.WorkItemTypes = workItemTypes.Split(',');
+            }
             foreach (var parameter in keyValuePairList.Where(kvl => kvl.Key == "parameterSet"))
             {
                 var set = ConfigurationParser.ParameterSetList.Parse(parameter.Value);
 
                 var dictionary = set.ToDictionary(k => k.Key, v => v.Value);
                 QueryParameters.Add(dictionary);
+            }
+
+            var hierarchyModeString = keyValuePairList.GetStringValue("hierarchyMode");
+            if (!String.IsNullOrEmpty(hierarchyModeString))
+            {
+                HierarchyMode = hierarchyModeString.Split(',', ';').Select(s => s.Trim(' ')).ToArray();
             }
         }
 
@@ -49,6 +62,13 @@ namespace WordExporter.Core.Templates.Parser
         /// </summary>
         public String TableTemplate { get; set; }
         public Int32 Limit { get; set; }
+
+        /// <summary>
+        /// If this value contains at least one element, it will used to export
+        /// only the work item in this lists. This allows you to do hierarchical
+        /// queries, but export only childs or fathers.
+        /// </summary>
+        public String[] WorkItemTypes { get; set; }
 
         /// <summary>
         /// <para>
@@ -66,12 +86,25 @@ namespace WordExporter.Core.Templates.Parser
 
         public bool RepeatForEachIteration { get; private set; }
 
+        /// <summary>
+        /// <para>
+        /// This is a special property, if contains series of types that will trigger a real specific query 
+        /// where:
+        /// </para>
+        /// <para>
+        /// 1) the component will execute the query.
+        /// 2) the component will start from the first type, and for each type it will automatically
+        /// traverse all the parent to fulfill hierarchy.
+        /// </para>
+        /// </summary>
+        public String[] HierarchyMode { get; private set; }
+
         public String GetTemplateForWorkItem(string workItemTypeName)
         {
             return SpecificTemplates.TryGetValue(workItemTypeName);
         }
 
-        #region syntax
+        #region Syntax
 
         public readonly static Parser<QuerySection> Parser =
           from keyValueList in ConfigurationParser.KeyValueList
@@ -94,39 +127,76 @@ namespace WordExporter.Core.Templates.Parser
 
             foreach (var query in queries)
             {
-                var workItems = workItemManger.ExecuteQuery(query).Take(Limit);
+#if DEBUG
+                //Limit = 20;
+#endif
+                List<WorkItem> queryRawReturnValue = workItemManger.ExecuteQuery(query)
+                    .Take(Limit)
+                    .ToList();
+                var workItems = queryRawReturnValue
+                    .Where(ShouldExport)
+                    .ToList();
 
+                //Add the table only if whe really have work item selected.
                 if (String.IsNullOrEmpty(TableTemplate))
                 {
-                    foreach (var workItem in workItems)
+                    if (workItems.Count > 0)
                     {
-                        if (!SpecificTemplates.TryGetValue(workItem.Type.Name, out var templateName))
+                        foreach (var workItem in workItems)
                         {
-                            templateName = wordTemplateFolderManager.GetTemplateFor(workItem.Type.Name);
-                        }
-                        else
-                        {
-                            templateName = wordTemplateFolderManager.GenerateFullFileName(templateName);
-                        }
+                            if (!SpecificTemplates.TryGetValue(workItem.Type.Name, out var templateName))
+                            {
+                                templateName = wordTemplateFolderManager.GetTemplateFor(workItem.Type.Name);
+                            }
+                            else
+                            {
+                                templateName = wordTemplateFolderManager.GenerateFullFileName(templateName);
+                            }
 
-                        manipulator.InsertWorkItem(workItem, templateName, true, parameters);
+                            manipulator.InsertWorkItem(workItem, templateName, true, parameters);
+                        }
                     }
                 }
                 else
                 {
-                    //We have a table template, we want to export work item as a list 
+                    //We have a table template, we want to export work item as a list
                     var tableFile = wordTemplateFolderManager.GenerateFullFileName(TableTemplate);
                     var tempFile = wordTemplateFolderManager.CopyFileInTempDirectory(tableFile);
                     using (var tableManipulator = new WordManipulator(tempFile, false))
                     {
                         tableManipulator.SubstituteTokens(parameters);
-                        tableManipulator.FillTableWithCompositeWorkItems(true, workItems);
+                        tableManipulator.FillTableWithCompositeWorkItems(true, workItems, workItemManger);
                     }
                     manipulator.AppendOtherWordFile(tempFile);
                 }
             }
 
             base.Assemble(manipulator, parameters, connectionManager, wordTemplateFolderManager, teamProjectName);
+        }
+
+        public override void AssembleExcel(
+            ExcelManipulator manipulator,
+            Dictionary<string, object> parameters,
+            ConnectionManager connectionManager,
+            WordTemplateFolderManager wordTemplateFolderManager,
+            string teamProjectName)
+        {
+            WorkItemManger workItemManger = PrepareWorkItemManager(connectionManager, teamProjectName);
+            //If we do not have query parameters we have a single query or we can have parametrized query with iterationPath
+            var queries = PrepareQueries(parameters);
+
+            foreach (var query in queries)
+            {
+                if (HierarchyMode?.Length > 0)
+                {
+                    var hr = workItemManger.ExecuteHierarchicQuery(query, HierarchyMode);
+                    manipulator.FillWorkItems(hr);
+                }
+                else
+                {
+                    throw new NotSupportedException("This version of the program only support hierarchy mode for excel");
+                }
+            }
         }
 
         public override void Dump(
@@ -145,7 +215,7 @@ namespace WordExporter.Core.Templates.Parser
             foreach (var query in queries)
             {
                 var workItems = workItemManger.ExecuteQuery(query).Take(Limit);
-                foreach (var workItem in workItems)
+                foreach (var workItem in workItems.Where(ShouldExport))
                 {
                     var values = workItem.CreateDictionaryFromWorkItem();
                     foreach (var value in values)
@@ -154,6 +224,11 @@ namespace WordExporter.Core.Templates.Parser
                     }
                 }
             }
+        }
+
+        private bool ShouldExport(WorkItem workItem)
+        {
+            return WorkItemTypes == null || WorkItemTypes.Contains(workItem.Type.Name);
         }
 
         private static WorkItemManger PrepareWorkItemManager(ConnectionManager connectionManager, string teamProjectName)

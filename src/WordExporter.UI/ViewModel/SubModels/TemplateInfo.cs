@@ -96,5 +96,18 @@ namespace WordExporter.UI.ViewModel.SubModels
                 Set<Dictionary<String, String>>(() => this.ArrayParameters, ref _arrayParameters, value);
             }
         }
+
+        private Boolean _isSelected;
+        public Boolean IsSelected
+        {
+            get
+            {
+                return _isSelected;
+            }
+            set
+            {
+                Set<Boolean>(() => this.IsSelected, ref _isSelected, value);
+            }
+        }
     }
 }

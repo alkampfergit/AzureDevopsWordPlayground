@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using WordExporter.UI.Support;
 using WordExporter.UI.ViewModel;
+using Microsoft.ApplicationInsights.Extensibility;
 
 namespace WordExporter.UI
 {
@@ -18,6 +19,10 @@ namespace WordExporter.UI
         public MainWindow()
         {
             InitializeComponent();
+
+            var aiKey = StatePersister.Instance.Load<String>("aiKey");
+
+            TelemetryConfiguration telemetryConfiguration = new TelemetryConfiguration(aiKey ?? "");
 
             Log.Logger = new LoggerConfiguration()
                 .Enrich.WithExceptionDetails()
@@ -32,6 +37,7 @@ namespace WordExporter.UI
                      restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error
                 )
                 .WriteTo.Sink(new LogInterceptorSink())
+                .WriteTo.ApplicationInsights(telemetryConfiguration, TelemetryConverter.Events, Serilog.Events.LogEventLevel.Warning)
                 .CreateLogger();
 
             var lv = new LogWindows();

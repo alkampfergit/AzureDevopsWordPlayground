@@ -2,9 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using WordExporter.Core.Templates.Parser;
 
 namespace WordExporter.Core.Templates
@@ -101,13 +98,18 @@ namespace WordExporter.Core.Templates
 
         public String CopyFileInTempDirectory(String localFileName)
         {
+            var tempFileName = Path.GetTempPath() + Guid.NewGuid() + Path.GetExtension(localFileName);
+            CopyFileToDestination(localFileName, tempFileName);
+            return tempFileName;
+        }
+
+        public void CopyFileToDestination(String localFileName, String destinationFileName)
+        {
             String fileName = Path.Combine(_templateFolder, localFileName);
             if (!File.Exists(fileName))
                 throw new ArgumentException($"File {fileName} does not exists.", fileName);
 
-            var tempFile = Path.GetTempPath() + Guid.NewGuid().ToString() + Path.GetExtension(fileName);
-            File.Copy(fileName, tempFile);
-            return tempFile;
+            File.Copy(fileName, destinationFileName);
         }
     }
 }
