@@ -1,0 +1,16 @@
+﻿[[parameters]]
+	iteration=teamproject\6.3
+[[static]]
+    filename: header.docx
+[[query]]
+    query: "SELECT
+        * 
+        FROM workitems
+        WHERE ([System.WorkItemType] = 'Product Backlog Item')
+            AND [System.IterationPath] = '{iteration}'"
+[[query]]
+    query: "SELECT
+        * 
+        FROM workitems
+        WHERE ([System.WorkItemType] = 'Bug')
+            AND [System.IterationPath] = '{iteration}'"
