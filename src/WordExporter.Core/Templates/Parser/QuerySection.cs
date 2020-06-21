@@ -50,6 +50,7 @@ namespace WordExporter.Core.Templates.Parser
             {
                 HierarchyMode = hierarchyModeString.Split(',', ';').Select(s => s.Trim(' ')).ToArray();
             }
+            PageBreak = keyValuePairList.GetBooleanValue("pageBreak");
         }
 
         public String Name { get; private set; }
@@ -69,6 +70,11 @@ namespace WordExporter.Core.Templates.Parser
         /// queries, but export only childs or fathers.
         /// </summary>
         public String[] WorkItemTypes { get; set; }
+
+        /// <summary>
+        /// If true it will insert a page break after each work item.
+        /// </summary>
+        public Boolean PageBreak { get; set; }
 
         /// <summary>
         /// <para>
@@ -153,7 +159,7 @@ namespace WordExporter.Core.Templates.Parser
                                 templateName = wordTemplateFolderManager.GenerateFullFileName(templateName);
                             }
 
-                            manipulator.InsertWorkItem(workItem, templateName, true, parameters);
+                            manipulator.InsertWorkItem(workItem, templateName, PageBreak, parameters);
                         }
                     }
                 }

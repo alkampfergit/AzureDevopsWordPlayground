@@ -60,6 +60,12 @@ namespace WordExporter.Support
             HelpText = "Name of the folder that contains template to use, if this parameter is present we assume that the folder contain a valid structure.txt file")]
         public String TemplateFolder { get; set; }
 
+        [Option(
+            "param",
+            Required = false,
+            HelpText = "param in form name=value")]
+        public IEnumerable<String> Parameters { get; set; }
+
         internal string GetAccessToken()
         {
             if (!String.IsNullOrEmpty(AccessTokenFile))
