@@ -143,13 +143,18 @@ namespace WordExporter.Core.WorkItems
             }
         }
 
-        public static String GetValue(this Field field)
+        public static Object GetValue(this Field field)
         {
             if (field.Value == null)
                 return String.Empty;
 
             if (field.Value is DateTime dateTime)
                 return dateTime.ToShortDateString();
+
+            if (field.FieldDefinition.FieldType == FieldType.Html)
+            {
+                return new HtmlSubstitution(field.WorkItem.GenerateHtmlForWordEmbedding(field.Value.ToString(), Registry.Options.NormalizeFontInDescription));
+            }
 
             return field.Value.ToString();
         }
@@ -247,6 +252,7 @@ namespace WordExporter.Core.WorkItems
                             string fileName = match.Groups["fileName"].Value;
                             extension = Path.GetExtension(fileName).Trim('.');
                             downloadedAttachment = Path.GetTempFileName() + "." + extension;
+                            
                             if (serverCredentials != null)
                             {
                                 using (var client = new WebClient())

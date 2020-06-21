@@ -162,6 +162,16 @@ namespace WordExporter.Core
 
         public ICredentials GetCredentials()
         {
+            if (_tfsCollection.Credentials is NetworkCredential nc)
+            {
+                if (String.IsNullOrEmpty(nc.UserName))
+                {
+                    //we are not authenticated with network credentials, probably we used a token
+                    return null;
+                }
+            }
+
+
             return _tfsCollection.Credentials;
         }
     }

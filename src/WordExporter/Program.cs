@@ -1,5 +1,4 @@
 ﻿using CommandLine;
-using Microsoft.TeamFoundation.VersionControl.Client;
 using Microsoft.TeamFoundation.WorkItemTracking.Client;
 using Serilog;
 using Serilog.Exceptions;
@@ -37,7 +36,7 @@ namespace WordExporter
             }
 
             ConnectionManager connection = new ConnectionManager(options.ServiceAddress, options.GetAccessToken());
-            
+
             //DumpAllIterations(connection);
             //DumpAllTeamProjects(connection);
             //TestExcelExtraction(connection);
@@ -111,10 +110,26 @@ new[] { "task", "requirement", "feature", "epic" });
 
             //now we need to ask user parameter value
             Dictionary<string, Object> parameters = new Dictionary<string, object>();
+            foreach (var commandLineParam in options.Parameters)
+            {
+                var splitted = commandLineParam.Split('=');
+                if (splitted.Length == 2)
+                {
+                    Log.Debug("Found parameter {paramName} in command line with value {value}", splitted[0], splitted[1]);
+                    parameters[splitted[0]] = splitted[1];
+                }
+                else
+                {
+                    Log.Error("Command line parameter {param} is not in the form name=value", commandLineParam);
+                }
+            }
             foreach (var parameterName in wordFolderManager.TemplateDefinition.ParameterSection.Parameters.Keys)
             {
-                Console.Write($"Parameter {parameterName}:");
-                parameters[parameterName] = Console.ReadLine();
+                if (!parameters.ContainsKey(parameterName))
+                {
+                    Console.Write($"Parameter {parameterName}:");
+                    parameters[parameterName] = Console.ReadLine();
+                }
             }
 
             var tempFileName = Path.GetTempPath() + Guid.NewGuid().ToString();

@@ -511,7 +511,7 @@ namespace WordExporter.Core.WordManipulation
 
         private AltChunk CreateChunkForHtmlPage(string htmlPage)
         {
-            var realHtml = $"<html><head></head><body>{htmlPage}</body></html>";
+            var realHtml = $"<html><head> <meta charset=\"UTF-8\"></head><body>{htmlPage}</body></html>";
             string altChunkId = "myid" + Guid.NewGuid().ToString();
             using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(realHtml)))
             {
